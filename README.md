@@ -15,9 +15,10 @@ Instead of relying on predefined filter lists, GlassVeil gives you a visual elem
 - Default keyboard shortcut (You can custom it your self)
   - macOS: `Cmd + B`
   - Windows/Linux: `Ctrl + B`
-
-  <img src="readmeAsset/shortcut_set.png" alt="shortcut setting" width="550">
-
+  - You can customize the shortcut from:
+  ```text
+  chrome://extensions/shortcuts
+  ```
 - Context menu shortcut: “Block element on this page”
 - Shadow DOM based picker UI to reduce conflicts with website styles
 - Local-only storage using Chrome extension storage
@@ -27,9 +28,9 @@ Instead of relying on predefined filter lists, GlassVeil gives you a visual elem
 ### Load as an unpacked extension
 
 1. Download or clone this repository.
-
-bash git clone https://github.com/Peerapat-J/GlassVeil.git 
-
+  ```text
+  git clone https://github.com/Peerapat-J/GlassVeil.git 
+  ```
 2. Open Chrome or another Chromium-based browser.
 3. Go to: `chrome://extensions/shortcuts`
 4. Enable Developer mode.
@@ -76,24 +77,12 @@ Click Reset Site Rules in the popup to remove all saved rules for the current do
 
 ### Use keyboard shortcut
 
-Use:
+To start the element picker.
 
-```text
-Command + B
-```
+Use: `Command + B` on macOS, 
+or: `Ctrl + B` on Windows/Linux 
 
-on macOS, or:
 
-```text
-Ctrl + B
-```
-on Windows/Linux to start the element picker.
-
-You can customize the shortcut from:
-
-```text
-chrome://extensions/shortcuts
-```
 
 ## Permissions
 
