@@ -1,0 +1,15 @@
+/* content/content.css */
+
+/* Highlight class applied to hovered elements during selection mode */
+.glassveil-picker-hovered {
+    outline: 2px dashed #00f2fe !important;
+    outline-offset: -2px !important;
+    box-shadow: 0 0 15px rgba(0, 242, 254, 0.6), inset 0 0 10px rgba(0, 242, 254, 0.3) !important;
+    cursor: crosshair !important;
+    transition: outline 0.1s ease, box-shadow 0.1s ease !important;
+}
+
+/* Prevent pointer events on elements inside our UI wrapper if it's injected on the main DOM */
+#glassveil-picker-root {
+    all: initial !important;
+}
