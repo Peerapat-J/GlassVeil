@@ -15,7 +15,7 @@ Instead of relying on predefined filter lists, GlassVeil gives you a visual elem
 - Default keyboard shortcut (You can custom it your self)
   - macOS: `Cmd + B`
   - Windows/Linux: `Ctrl + B`
- ![menu](readmeAsset/shortcut_set.png)
+ ![shortcut_set](readmeAsset/shortcut_set.png)
 - Context menu shortcut: “Block element on this page”
 - Shadow DOM based picker UI to reduce conflicts with website styles
 - Local-only storage using Chrome extension storage
@@ -41,21 +41,25 @@ bash git clone https://github.com/Peerapat-J/GlassVeil.git
 
 1. Open the website where you want to hide an element.
 2. Click the GlassVeil extension icon.
-3. Click Pick Element to Block.
-![picker](readmeAsset/menu_v1.png)
+3. Click **Pick Element to Block**.
+
+   <img src="assets/menu_v1.png" alt="Pick Element button" width="420">
 
 4. Hover over the page element you want to hide.
 5. Click the element to select it.
-![select highlight](readmeAsset/partially-selectBlock_v1.png)
+<img src="assets/partially-selectBlock_v1.png" alt="Selected element highlight" width="640">
 
+6. Optionally use:
+   - **Select Parent** to block a larger container
+   - **Preview Hide** to test the result before saving
 7. Optionally use:
    - Select Parent to block a larger container
    - Preview Hide to test the result before saving
 8. Click Block Element.
-![block button](readmeAsset/previewHide.png)
+![previewHide](readmeAsset/previewHide.png)
 
 The rule will be saved for the current domain.
-![block list](readmeAsset/blockList_v1.png)
+![blockList_v1](readmeAsset/blockList_v1.png)
 
 ### Toggle blocking for a site
 
