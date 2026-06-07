@@ -91,10 +91,24 @@
     let hoveredElement = null;
     let selectedElement = null;
     let originalDisplay = "";
+    let wasPreviewing = false;
 
     // UI container references
     let pickerRoot = null;
     let shadowRoot = null;
+
+    const restorePreview = () => {
+        if (!wasPreviewing || !selectedElement) return;
+
+        if (originalDisplay !== "") {
+            selectedElement.style.display = originalDisplay;
+        } else {
+            selectedElement.style.removeProperty("display");
+        }
+
+        originalDisplay = "";
+        wasPreviewing = false;
+    };
 
     const startPicker = () => {
         if (isPickerActive) return;
@@ -136,9 +150,7 @@
         }
         if (selectedElement) {
             selectedElement.classList.remove("glassveil-picker-hovered");
-            if (originalDisplay !== "") {
-                selectedElement.style.display = originalDisplay;
-            }
+            restorePreview();
         }
 
         // Clean up event listeners
@@ -440,16 +452,16 @@
             if (!isDragging) return;
 
             let newLeft = e.clientX - dragOffsetX;
-            let newTop  = e.clientY - dragOffsetY;
+            let newTop = e.clientY - dragOffsetY;
 
             // Clamp inside the viewport
             const panelW = container.offsetWidth;
             const panelH = container.offsetHeight;
-            newLeft = Math.max(0, Math.min(newLeft, window.innerWidth  - panelW));
-            newTop  = Math.max(0, Math.min(newTop,  window.innerHeight - panelH));
+            newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - panelW));
+            newTop = Math.max(0, Math.min(newTop, window.innerHeight - panelH));
 
             container.style.left = newLeft + "px";
-            container.style.top  = newTop  + "px";
+            container.style.top = newTop + "px";
         }, true);
 
         ownerDoc.addEventListener("mouseup", () => {
@@ -530,10 +542,7 @@
         if (selectedElement) {
             // Re-enable original state if clicking another element
             selectedElement.classList.remove("glassveil-picker-hovered");
-            if (originalDisplay !== "") {
-                selectedElement.style.display = originalDisplay;
-                originalDisplay = "";
-            }
+            restorePreview();
         }
 
         selectedElement = e.target;
@@ -575,10 +584,7 @@
 
         // Remove highlight and reset preview on current element
         selectedElement.classList.remove("glassveil-picker-hovered");
-        if (originalDisplay !== "") {
-            selectedElement.style.display = originalDisplay;
-            originalDisplay = "";
-        }
+        restorePreview();
 
         // Set parent as the new selected element
         selectedElement = parent;
@@ -603,15 +609,11 @@
         if (isChecked) {
             // Hide element temporarily
             originalDisplay = selectedElement.style.display;
+            wasPreviewing = true;
             selectedElement.style.setProperty("display", "none", "important");
         } else {
             // Restore element
-            if (originalDisplay !== "") {
-                selectedElement.style.display = originalDisplay;
-                originalDisplay = "";
-            } else {
-                selectedElement.style.removeProperty("display");
-            }
+            restorePreview();
         }
     };
 
