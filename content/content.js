@@ -692,25 +692,27 @@
 
             // Get clean classes
             let classSelector = "";
+            const rawClasses = [];
+
             if (current.classList && current.classList.length > 0) {
-                const cleanClasses = [];
                 for (let i = 0; i < current.classList.length; i++) {
                     const cls = current.classList[i];
-                    // Filter out picker outline classes or dynamic classes
+
                     if (
                         cls === "glassveil-picker-hovered" ||
                         /\d{4,}/.test(cls) ||
-                        cls.length > 25 || // Dynamic class strings are usually very long
-                        cls.includes("_") || // CSS module hashes often contain underscores or dashes followed by hashes
-                        cls.includes("-") && /\d/.test(cls) // dynamic e.g. col-md-4 is fine, but ad-123 is not. Let's keep it simple.
+                        cls.length > 25 ||
+                        cls.includes("_") ||
+                        cls.includes("-") && /\d/.test(cls)
                     ) {
                         continue;
                     }
-                    cleanClasses.push(CSS.escape(cls));
+
+                    rawClasses.push(cls);
                 }
 
-                if (cleanClasses.length > 0) {
-                    classSelector = "." + cleanClasses.join(".");
+                if (rawClasses.length > 0) {
+                    classSelector = "." + rawClasses.map(cls => CSS.escape(cls)).join(".");
                 }
             }
 
@@ -723,8 +725,7 @@
                 if (sibTagName !== tagName) return false;
 
                 if (classSelector) {
-                    const classes = classSelector.substring(1).split(".");
-                    return classes.every(cls => sib.classList.contains(cls));
+                    return rawClasses.every(cls => sib.classList.contains(cls));
                 }
                 return true;
             });
