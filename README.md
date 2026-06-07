@@ -12,7 +12,7 @@ Instead of relying on predefined filter lists, GlassVeil gives you a visual elem
 - Per-site blocking rules
 - Enable or disable blocking for the current site
 - View, delete, and reset saved rules from the popup
-- Default keyboard shortcut (You can custom it your self)
+- Default keyboard shortcut.
   - macOS: `Cmd + B`
   - Windows/Linux: `Ctrl + B`
   - You can customize the shortcut from:
