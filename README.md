@@ -95,25 +95,6 @@ You can customize the shortcut from:
 chrome://extensions/shortcuts
 ```
 
-## Project Structure
-
-```text
-GlassVeil/
-├── manifest.json
-├── background/
-│   └── service-worker.js
-├── content/
-│   ├── content.js
-│   └── content.css
-├── popup/
-│   ├── popup.html
-│   ├── popup.css
-│   └── popup.js
-└── icons/
-    ├── icon-16.png
-    ├── icon-48.png
-    └── icon-128.png
-```
 ## Permissions
 
 GlassVeil uses the following permissions:
