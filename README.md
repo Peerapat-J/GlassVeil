@@ -48,8 +48,6 @@ bash git clone https://github.com/Peerapat-J/GlassVeil.git
 
 4. Hover over the page element you want to hide.
 5. Click the element to select it.
-<img src="readmeAsset/partially-selectBlock_v1.png" alt="Selected element highlight" width="640">
-
 6. Optionally use:
    - **Select Parent** to block a larger container
    - **Preview Hide** to test the result before saving
