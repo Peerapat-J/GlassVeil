@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>GlassVeil Ad Shield</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+    <div class="glass-container">
+        <header>
+            <div class="logo-area">
+                <div class="logo-glow"></div>
+                <div class="logo-shield"></div>
+                <h1>Glass<span>Veil</span></h1>
+            </div>
+            <div class="status-badge" id="status-badge">Active</div>
+        </header>
+
+        <main>
+            <!-- Domain Info & Toggle -->
+            <section class="site-control">
+                <div class="domain-details">
+                    <span class="label">Current Site</span>
+                    <span class="value" id="current-domain">loading...</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="blocker-toggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </section>
+
+            <!-- Main Action -->
+            <button class="btn btn-primary" id="pick-element-btn">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="9" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round"/>
+                    <line x1="12" y1="3" x2="12" y2="7" stroke-linecap="round"/>
+                    <line x1="12" y1="17" x2="12" y2="21" stroke-linecap="round"/>
+                    <line x1="3" y1="12" x2="7" y2="12" stroke-linecap="round"/>
+                    <line x1="17" y1="12" x2="21" y2="12" stroke-linecap="round"/>
+                </svg>
+                <span>Pick Element to Block</span>
+                <kbd class="shortcut-hint" id="shortcut-hint">(CMD + B)</kbd>
+            </button>
+
+            <!-- Rules List Section -->
+            <section class="rules-section">
+                <h2>Blocked Elements on this site (<span id="rule-count">0</span>)</h2>
+                <div class="rules-list-container">
+                    <ul id="rules-list" class="rules-list">
+                        <!-- Dynamically populated -->
+                    </ul>
+                    <p id="no-rules-message" class="empty-state">No custom elements blocked on this site yet.</p>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <span class="version">v1.0.0</span>
+            <div class="footer-actions">
+                <a class="btn-text" id="shortcut-settings-link" href="#" title="Customize keyboard shortcut">Edit
+                    Shortcut</a>
+                <button class="btn-text" id="clear-all-btn">Reset Site Rules</button>
+            </div>
+        </footer>
+    </div>
+    <script src="popup.js"></script>
+</body>
+
+</html>
