@@ -226,6 +226,11 @@ input:checked+.slider:before {
     transform: translateY(0);
 }
 
+.btn:focus-visible {
+    outline: 2px solid var(--accent-cyan);
+    outline-offset: 2px;
+}
+
 .icon {
     width: 15px;
     height: 15px;
