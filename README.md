@@ -12,22 +12,13 @@ Instead of relying on predefined filter lists, GlassVeil gives you a visual elem
 - Per-site blocking rules
 - Enable or disable blocking for the current site
 - View, delete, and reset saved rules from the popup
-- Keyboard shortcut support
-  - macOS: Command + B
-  - Windows/Linux: Ctrl + B
+- Default keyboard shortcut (You can custom it your self)
+  - macOS: `Cmd + B`
+  - Windows/Linux: `Ctrl + B`
+ ![menu](readmeAsset/shortcut_set.png)
 - Context menu shortcut: “Block element on this page”
 - Shadow DOM based picker UI to reduce conflicts with website styles
 - Local-only storage using Chrome extension storage
-
-## How It Works
-
-GlassVeil injects a content script into supported websites and creates CSS rules for selected elements.
-
-When you block an element, the extension generates a CSS selector and stores it for the current domain. On future visits, GlassVeil applies the saved selectors and hides matching elements with:
-
-css display: none !important; 
-
-Rules are stored locally in your browser and are scoped by domain.
 
 ## Installation
 
@@ -38,10 +29,7 @@ Rules are stored locally in your browser and are scoped by domain.
 bash git clone https://github.com/Peerapat-J/GlassVeil.git 
 
 2. Open Chrome or another Chromium-based browser.
-3. Go to:
-
-text chrome://extensions/ 
-
+3. Go to: `chrome://extensions/shortcuts`
 4. Enable Developer mode.
 5. Click Load unpacked.
 6. Select the GlassVeil project folder.
@@ -54,14 +42,20 @@ text chrome://extensions/
 1. Open the website where you want to hide an element.
 2. Click the GlassVeil extension icon.
 3. Click Pick Element to Block.
+![picker](readmeAsset/menu_v1.png)
+
 4. Hover over the page element you want to hide.
 5. Click the element to select it.
-6. Optionally use:
+![select highlight](readmeAsset/partially-selectBlock_v1.png)
+
+7. Optionally use:
    - Select Parent to block a larger container
    - Preview Hide to test the result before saving
-7. Click Block Element.
+8. Click Block Element.
+![block button](readmeAsset/previewHide.png)
 
 The rule will be saved for the current domain.
+![block list](readmeAsset/blockList_v1.png)
 
 ### Toggle blocking for a site
 
@@ -131,7 +125,7 @@ GlassVeil is a cosmetic blocker. It hides selected elements from view, but it do
 
 It cannot run on restricted browser pages such as:
 
-text chrome:// edge:// about: 
+` chrome:// edge:// about: `
 
 Some websites may also change their HTML structure frequently, which can make previously saved selectors stop matching correctly.
 
@@ -140,14 +134,3 @@ Some websites may also change their HTML structure frequently, which can make pr
 GlassVeil stores rules locally in your browser using Chrome extension storage.
 
 It does not require an account, does not send your saved rules to a server, and does not use a remote filter list.
-
-## Development
-
-This project uses plain HTML, CSS, and JavaScript with Chrome Extension Manifest V3.
-
-To modify the extension:
-
-1. Edit the source files.
-2. Go to chrome://extensions/.
-3. Click Reload on the GlassVeil extension card.
-4. Test the changes, have a good day.
