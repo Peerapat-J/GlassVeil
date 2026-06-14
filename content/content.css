@@ -11,9 +11,9 @@
 
 /* Persistent highlight class applied to selected elements */
 .glassveil-picker-selected {
-    outline: 2px solid #7f00ff !important;
+    outline: 2px solid #00f2fe !important;
     outline-offset: -2px !important;
-    box-shadow: 0 0 16px rgba(127, 0, 255, 0.55), inset 0 0 12px rgba(127, 0, 255, 0.25) !important;
+    box-shadow: 0 0 18px rgba(0, 242, 254, 0.75), inset 0 0 12px rgba(0, 242, 254, 0.22) !important;
     cursor: crosshair !important;
     transition: outline 0.1s ease, box-shadow 0.1s ease !important;
 }

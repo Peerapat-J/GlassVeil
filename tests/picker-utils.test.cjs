@@ -3,6 +3,7 @@ const test = require("node:test");
 
 const {
     isPickerStateClass,
+    formatSelectedOutlineLabel,
     mergeUniqueSelectors,
     formatConfirmButtonLabel,
     formatSelectionSummary
@@ -12,6 +13,11 @@ test("isPickerStateClass ignores temporary picker classes during selector genera
     assert.equal(isPickerStateClass("glassveil-picker-hovered"), true);
     assert.equal(isPickerStateClass("glassveil-picker-selected"), true);
     assert.equal(isPickerStateClass("sponsored-card"), false);
+});
+
+test("formatSelectedOutlineLabel numbers selected elements from one", () => {
+    assert.equal(formatSelectedOutlineLabel(0), "1");
+    assert.equal(formatSelectedOutlineLabel(4), "5");
 });
 
 test("mergeUniqueSelectors keeps existing selectors and appends new unique ones", () => {
