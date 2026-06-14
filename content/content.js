@@ -8,6 +8,8 @@ var GlassVeilPickerUtils = globalThis.GlassVeilPickerUtils || (() => {
 
     const isPickerStateClass = (className) => pickerStateClasses.has(className);
 
+    const formatSelectedOutlineLabel = (selectedIndex) => `${selectedIndex + 1}`;
+
     const mergeUniqueSelectors = (existingSelectors = [], newSelectors = []) => {
         const mergedSelectors = Array.isArray(existingSelectors) ? [...existingSelectors] : [];
 
@@ -33,6 +35,7 @@ var GlassVeilPickerUtils = globalThis.GlassVeilPickerUtils || (() => {
 
     return {
         isPickerStateClass,
+        formatSelectedOutlineLabel,
         mergeUniqueSelectors,
         formatConfirmButtonLabel,
         formatSelectionSummary
@@ -53,6 +56,7 @@ if (typeof window !== "undefined") {
 
     const {
         isPickerStateClass,
+        formatSelectedOutlineLabel,
         mergeUniqueSelectors,
         formatConfirmButtonLabel,
         formatSelectionSummary
@@ -145,10 +149,101 @@ if (typeof window !== "undefined") {
     let selectedElements = new Set();
     let activeSelectedElement = null;
     const previewedElements = new Map();
+    const selectedOutlineBoxes = new Map();
+    let outlineUpdateFrame = null;
 
     // UI container references
     let pickerRoot = null;
     let shadowRoot = null;
+
+    const getOutlineLayer = () => shadowRoot ? shadowRoot.getElementById("selected-outline-layer") : null;
+
+    const clearSelectedOutlines = () => {
+        selectedOutlineBoxes.forEach((outlineBox) => outlineBox.remove());
+        selectedOutlineBoxes.clear();
+
+        if (outlineUpdateFrame !== null) {
+            cancelAnimationFrame(outlineUpdateFrame);
+            outlineUpdateFrame = null;
+        }
+    };
+
+    const syncSelectedOutlines = () => {
+        const outlineLayer = getOutlineLayer();
+        if (!outlineLayer) return;
+
+        Array.from(selectedElements).forEach((element) => {
+            if (!element.isConnected) {
+                selectedElements.delete(element);
+                selectedOutlineBoxes.get(element)?.remove();
+                selectedOutlineBoxes.delete(element);
+            }
+        });
+
+        selectedOutlineBoxes.forEach((outlineBox, element) => {
+            if (!selectedElements.has(element)) {
+                outlineBox.remove();
+                selectedOutlineBoxes.delete(element);
+            }
+        });
+
+        Array.from(selectedElements).forEach((element, index) => {
+            let outlineBox = selectedOutlineBoxes.get(element);
+            if (!outlineBox) {
+                outlineBox = document.createElement("div");
+                outlineBox.className = "selected-outline";
+
+                const outlineLabel = document.createElement("span");
+                outlineLabel.className = "selected-outline-label";
+                outlineBox.appendChild(outlineLabel);
+
+                outlineLayer.appendChild(outlineBox);
+                selectedOutlineBoxes.set(element, outlineBox);
+            }
+
+            const rect = element.getBoundingClientRect();
+            const isVisible = rect.width > 0 &&
+                rect.height > 0 &&
+                rect.bottom > 0 &&
+                rect.right > 0 &&
+                rect.top < window.innerHeight &&
+                rect.left < window.innerWidth;
+
+            if (!isVisible) {
+                outlineBox.style.display = "none";
+                return;
+            }
+
+            const left = Math.max(0, rect.left);
+            const top = Math.max(0, rect.top);
+            const right = Math.min(window.innerWidth, rect.right);
+            const bottom = Math.min(window.innerHeight, rect.bottom);
+
+            outlineBox.style.display = "block";
+            outlineBox.style.left = `${left}px`;
+            outlineBox.style.top = `${top}px`;
+            outlineBox.style.width = `${Math.max(0, right - left)}px`;
+            outlineBox.style.height = `${Math.max(0, bottom - top)}px`;
+
+            const outlineLabel = outlineBox.querySelector(".selected-outline-label");
+            if (outlineLabel) {
+                outlineLabel.textContent = formatSelectedOutlineLabel(index);
+            }
+        });
+    };
+
+    const scheduleSelectedOutlineSync = () => {
+        if (!isPickerActive || outlineUpdateFrame !== null) return;
+
+        outlineUpdateFrame = requestAnimationFrame(() => {
+            outlineUpdateFrame = null;
+            syncSelectedOutlines();
+        });
+    };
+
+    const handleViewportChange = () => {
+        scheduleSelectedOutlineSync();
+    };
 
     const restorePreviewForElement = (element) => {
         if (!previewedElements.has(element)) return;
@@ -233,6 +328,8 @@ if (typeof window !== "undefined") {
             confirmBtn.style.display = hasSelection ? "block" : "none";
             confirmBtn.textContent = formatConfirmButtonLabel(selectedCount);
         }
+
+        syncSelectedOutlines();
     };
 
     const startPicker = () => {
@@ -265,6 +362,8 @@ if (typeof window !== "undefined") {
         document.addEventListener("mouseout", handleMouseOut, true);
         document.addEventListener("click", handleElementClick, true);
         document.addEventListener("keydown", handleKeyDown, true);
+        document.addEventListener("scroll", handleViewportChange, true);
+        window.addEventListener("resize", handleViewportChange, true);
     };
 
     const stopPicker = () => {
@@ -280,12 +379,15 @@ if (typeof window !== "undefined") {
         selectedElements.forEach((element) => {
             element.classList.remove("glassveil-picker-hovered", "glassveil-picker-selected");
         });
+        clearSelectedOutlines();
 
         // Clean up event listeners
         document.removeEventListener("mouseover", handleMouseOver, true);
         document.removeEventListener("mouseout", handleMouseOut, true);
         document.removeEventListener("click", handleElementClick, true);
         document.removeEventListener("keydown", handleKeyDown, true);
+        document.removeEventListener("scroll", handleViewportChange, true);
+        window.removeEventListener("resize", handleViewportChange, true);
 
         // Remove Shadow DOM UI
         if (pickerRoot && pickerRoot.parentNode) {
@@ -326,6 +428,43 @@ if (typeof window !== "undefined") {
                 z-index: 2147483647;
                 opacity: 0;
                 transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+            }
+
+            .selected-outline-layer {
+                position: fixed;
+                inset: 0;
+                width: 100vw;
+                height: 100vh;
+                pointer-events: none;
+                z-index: 2147483646;
+            }
+
+            .selected-outline {
+                position: fixed;
+                box-sizing: border-box;
+                border: 2px solid #00f2fe;
+                border-radius: 4px;
+                background: rgba(0, 242, 254, 0.06);
+                box-shadow: 0 0 0 1px rgba(2, 8, 23, 0.75), 0 0 18px rgba(0, 242, 254, 0.75);
+                pointer-events: none;
+            }
+
+            .selected-outline-label {
+                position: absolute;
+                top: -10px;
+                left: -10px;
+                min-width: 20px;
+                height: 20px;
+                padding: 0 6px;
+                border-radius: 999px;
+                background: #00f2fe;
+                color: #020617;
+                border: 1px solid rgba(255, 255, 255, 0.9);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+                font-size: 11px;
+                font-weight: 800;
+                line-height: 18px;
+                text-align: center;
             }
 
             .picker-panel.active {
@@ -520,6 +659,10 @@ if (typeof window !== "undefined") {
             }
         `;
 
+        const outlineLayer = document.createElement("div");
+        outlineLayer.id = "selected-outline-layer";
+        outlineLayer.className = "selected-outline-layer";
+
         const container = document.createElement("div");
         container.id = "glassveil-panel";
         container.className = "picker-panel";
@@ -552,6 +695,7 @@ if (typeof window !== "undefined") {
         `;
 
         shadowRoot.appendChild(style);
+        shadowRoot.appendChild(outlineLayer);
         shadowRoot.appendChild(container);
 
         // Trigger sliding entry animation on next tick
@@ -762,6 +906,8 @@ if (typeof window !== "undefined") {
         } else {
             restorePreview();
         }
+
+        syncSelectedOutlines();
     };
 
     const handleConfirmBlock = async (e) => {
