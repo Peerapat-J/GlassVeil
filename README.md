@@ -1,9 +1,9 @@
 
-# GlassVeil Ads Blocker
+# Personal Ads Blocker
 
-GlassVeil Ads Blocker is a personal cosmetic ad-blocking Chrome extension that lets you manually pick and hide unwanted page elements such as ad banners, overlays, sticky boxes, and other distracting UI elements.
+This ads blocker is a personal cosmetic ad-blocking Chrome extension that lets you manually pick and hide unwanted page elements such as ad banners, overlays, sticky boxes, and other distracting UI elements.
 
-Instead of relying on predefined filter lists, GlassVeil gives you a visual element picker. Select an element on the current website, confirm the block, and GlassVeil will save a CSS rule for that domain.
+Instead of relying on predefined filter lists, GlassVeil gives you a visual element picker. Select an element on the current website, confirm the block, and it will save a CSS rule for that domain.
 
 ## Features
 
@@ -35,15 +35,15 @@ Instead of relying on predefined filter lists, GlassVeil gives you a visual elem
 3. Go to: `chrome://extensions/shortcuts`
 4. Enable Developer mode.
 5. Click Load unpacked.
-6. Select the GlassVeil project folder.
-7. The GlassVeil icon should appear in your browser toolbar.
+6. Select the project folder.
+7. The extention icon should appear in your browser toolbar.
 
 ## Usage
 
 ### Block an element
 
 1. Open the website where you want to hide an element.
-2. Click the GlassVeil extension icon.
+2. Click at the extension icon.
 3. Click **Pick Element to Block**.
 <img src="readmeAsset/menu_v1.png" alt="Pick Element button" width="420">
 
@@ -62,7 +62,7 @@ The rule will be saved for the current domain.
 
 ### Toggle blocking for a site
 
-Use the switch in the popup to enable or disable GlassVeil on the current website.
+Use the switch in the popup to enable or disable on the current website.
 
 ### Delete a saved rule
 
@@ -83,7 +83,7 @@ or: `Ctrl + B` on Windows/Linux
 
 ## Permissions
 
-GlassVeil uses the following permissions:
+This project uses the following permissions:
 
 - storage — save site rules and disabled site settings locally
 - activeTab — interact with the current active tab
@@ -93,7 +93,7 @@ GlassVeil uses the following permissions:
 
 ## Limitations
 
-GlassVeil is a cosmetic blocker. It hides selected elements from view, but it does not prevent network requests from loading.
+It hides selected elements from view, but it does not prevent network requests from loading.
 
 It cannot run on restricted browser pages such as:
 
@@ -103,6 +103,6 @@ Some websites may also change their HTML structure frequently, which can make pr
 
 ## Privacy
 
-GlassVeil stores rules locally in your browser using Chrome extension storage.
+Every stores rules locally in your browser using Chrome extension storage.
 
 It does not require an account, does not send your saved rules to a server, and does not use a remote filter list.
