@@ -1,8 +1,8 @@
 {
     "manifest_version": 3,
-    "name": "GlassVeil Ad Shield",
+    "name": "GlassVeil - Personal Element Blocker",
     "version": "1.0.0",
-    "description": "A personal cosmetic ad-blocking extension. Pick, select, and hide annoying ad banners on any website.",
+    "description": "A personal cosmetic element blocker. Pick and hide unwanted banners, overlays, sidebars, and other distracting page elements.",
     "commands": {
         "toggle-picker": {
             "suggested_key": {
