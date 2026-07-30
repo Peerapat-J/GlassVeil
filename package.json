@@ -1,7 +1,8 @@
 {
-    "name": "glassveil-ads-blocker",
+    "name": "glassveil-personal-element-blocker",
     "version": "1.0.0",
     "private": true,
+    "description": "GlassVeil - Personal Element Blocker",
     "scripts": {
         "test": "node --test"
     }
