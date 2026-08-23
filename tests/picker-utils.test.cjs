@@ -3,6 +3,8 @@ const test = require("node:test");
 
 const {
     isPickerStateClass,
+    formatSelectedOutlineLabel,
+    clampPanelPosition,
     mergeUniqueSelectors,
     formatConfirmButtonLabel,
     formatSelectionSummary
@@ -12,6 +14,39 @@ test("isPickerStateClass ignores temporary picker classes during selector genera
     assert.equal(isPickerStateClass("glassveil-picker-hovered"), true);
     assert.equal(isPickerStateClass("glassveil-picker-selected"), true);
     assert.equal(isPickerStateClass("sponsored-card"), false);
+});
+
+test("formatSelectedOutlineLabel numbers selected elements from one", () => {
+    assert.equal(formatSelectedOutlineLabel(0), "1");
+    assert.equal(formatSelectedOutlineLabel(4), "5");
+});
+
+test("clampPanelPosition keeps the picker panel inside the viewport", () => {
+    assert.deepEqual(clampPanelPosition({
+        left: -24,
+        top: 800,
+        panelWidth: 320,
+        panelHeight: 120,
+        viewportWidth: 1024,
+        viewportHeight: 768
+    }), {
+        left: 0,
+        top: 648
+    });
+});
+
+test("clampPanelPosition handles panels wider than the viewport", () => {
+    assert.deepEqual(clampPanelPosition({
+        left: 40,
+        top: 20,
+        panelWidth: 1200,
+        panelHeight: 180,
+        viewportWidth: 800,
+        viewportHeight: 600
+    }), {
+        left: 0,
+        top: 20
+    });
 });
 
 test("mergeUniqueSelectors keeps existing selectors and appends new unique ones", () => {

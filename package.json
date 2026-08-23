@@ -4,6 +4,6 @@
     "private": true,
     "description": "GlassVeil - Personal Element Blocker",
     "scripts": {
-        "test": "node --test"
+        "test": "node --check content/content.js && node --test"
     }
 }
