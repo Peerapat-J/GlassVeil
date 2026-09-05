@@ -123,11 +123,12 @@ It does not require an account, does not send saved rules to a server, and does 
 
 ### Automated validation
 
-Use Node.js 22 LTS (recorded in `.nvmrc`). With nvm installed, run `nvm install` and `nvm use` from the repository root. There are currently no npm dependencies, so no install step or dependency cache is needed.
+Use Node.js 22 LTS, at least 22.22.2, as required by the DOM test environment. With nvm installed, run `nvm install` and `nvm use` from the repository root (`.nvmrc` selects the latest Node 22). Install the locked test dependencies with `npm ci --ignore-scripts`; no build step is needed to load the extension.
 
 Run the same checks as CI:
 
 ```sh
+npm ci --ignore-scripts
 npm test
 npm run check:syntax
 npm run check:manifest
@@ -141,7 +142,9 @@ For a release PR, replace `origin/dev` with `origin/main`. The first diff checks
 
 GitHub Actions runs these validations on every pull request and on pushes to `dev` or `main`, using a read-only repository token. PR checks run against the proposed merge, and whitespace checks compare it with the PR base. Push checks compare the previous and new commits (or the empty tree for a newly created branch).
 
-`npm test` includes the classic content-script syntax gate. `check:syntax` checks the content, popup, and service-worker scripts, and `check:manifest` parses `manifest.json`. Add future linting, packaging, or browser checks as separate workflow steps with matching local commands.
+`npm test` includes the classic-script syntax gate and offline DOM tests. `check:syntax` compiles every `.js` file in `content`, `shared`, `popup`, and `background` as a classic script without executing it, so module-only syntax cannot slip through Node's module detection. `check:manifest` parses `manifest.json`. Add future linting, packaging, or browser checks as separate workflow steps with matching local commands.
+
+See [Architecture and test coverage](docs/architecture.md) for module ownership, loading order, and the current selector/storage limitations.
 
 ### Browser validation
 

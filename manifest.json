@@ -45,6 +45,13 @@
                 "https://*/*"
             ],
             "js": [
+                "shared/storage.js",
+                "content/picker-utils.js",
+                "content/selector-generator.js",
+                "content/rule-engine.js",
+                "content/picker-state.js",
+                "content/picker-ui.js",
+                "content/picker.js",
                 "content/content.js"
             ],
             "css": [
