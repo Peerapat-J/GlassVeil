@@ -7,6 +7,7 @@ Instead of relying on a predefined filter list, GlassVeil provides a visual elem
 ## Features
 
 - Visual element picker for selecting one or more page elements
+- Exact element and Similar elements modes with stable selector candidates
 - Per-selector match counts, combined impact preview, and confirmation for broad rules
 - Cosmetic blocking using locally stored CSS selectors
 - Per-site blocking rules
@@ -53,7 +54,7 @@ Instead of relying on a predefined filter list, GlassVeil provides a visual elem
 
 4. Hover over a page element to inspect it.
 5. Click one or more elements to select them. Click a selected element again to remove it from the current selection.
-6. Optionally use:
+6. Keep **Exact element** to target each selected element individually, or choose **Similar elements** to preview a shared rule. This choice applies to all current selections. Optionally use:
    - **Select Parent** to target a larger container
    - **Preview Hide** to test all matching elements before saving
    - **Refresh matches** after the page changes
