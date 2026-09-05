@@ -15,11 +15,13 @@ GlassVeil loads directly as a Manifest V3 extension. There is no bundle or build
 | `content/picker-utils.js` | Pure labels, position clamping and temporary-class classification. |
 | `content/picker-ui.js` | Shadow DOM panel markup/styles and pointer dragging; accepts callbacks instead of saving rules itself. |
 | `content/picker.js` | Picker lifecycle, page events, preview restoration, selection outlines and interaction between state and UI. Saving is an injected callback. |
-| `popup/popup.js` | Current-site controls; delegates storage operations to the shared API. |
+| `popup/popup.js` | Current-site controls, loading/unsupported/error states and retry; delegates storage and tab operations. |
+| `shared/tab-access.js` | Shared popup/service-worker URL capability checks, current-tab verification and manifest-based fallback injection. |
+| `popup/metadata.js` | Reads installed version, active command binding and platform; formats shortcut display without using suggested defaults. |
 
 Definition-only modules publish frozen factory APIs in the extension's isolated world. Mutable state lives inside each factory instance, and collaborators are passed explicitly. CommonJS exports allow tests to load modules without running the extension.
 
-`manifest.json` declares the module order and puts `content/content.js` last. Both fallback injection paths (popup and service worker) read that same list from the manifest. The popup loads `shared/storage.js` before its own script. Only the entry point registers Chrome listeners; its injection guard prevents a second engine or listener set. Picker start/stop separately manages page event listeners.
+`manifest.json` declares the module order and puts `content/content.js` last. Both popup and service worker use `shared/tab-access.js` to read the same JS/CSS lists from the manifest for fallback injection. The worker imports this helper with `importScripts`; it is not injected into webpages. The popup loads `shared/storage.js` before its own script. Only the entry point registers Chrome listeners; its injection guard prevents a second engine or listener set. Picker start/stop separately manages page event listeners.
 
 ## Preserved behavior and narrow corrections
 
@@ -103,3 +105,24 @@ The toolbar, popup and picker use the owner-selected artwork documented in `icon
 4. Try Cmd+Z and Ctrl+Z on page/picker buttons, then in input/textarea/contenteditable controls: picker history should change only outside editable controls. Shift+modifier+Z should not undo.
 5. Remove a selected element with DevTools, then Undo: it must not reappear or leave stale preview/outline state. Repeat until no available history remains.
 6. Cancel/restart and save/restart: Undo should be disabled in each new session and existing saved rules should remain intact.
+
+
+## Popup metadata and page capability (#18 / #19)
+
+- The footer reads `chrome.runtime.getManifest().version`. Shortcut display reads the `toggle-picker` entry from [`chrome.commands.getAll()`](https://developer.chrome.com/docs/extensions/reference/api/commands#method-getAll), which reports the active binding. It never falls back to the manifest suggestion. Unassigned/missing commands show Not set; query failure shows Unavailable without blocking site controls.
+- [`chrome.runtime.getPlatformInfo()`](https://developer.chrome.com/docs/extensions/reference/api/runtime#method-getPlatformInfo) selects display formatting. macOS named modifiers become glyphs; native glyph strings remain intact. Windows/Linux use spaced plus signs. If platform lookup fails, preserve the returned binding as readable text. Ctrl from an active binding denotes Control; the manifest-only Ctrl-to-Command substitution is not reapplied.
+- URL parsing is centralized. HTTP/HTTPS websites are eligible, except known Chrome Web Store URLs. Other schemes (browser-internal, extension, file, data, etc.) are unsupported. Missing/malformed URLs or inaccessible tabs are unavailable and retryable. Context menus are offered on HTTP/HTTPS documents and use the same checks before activation.
+- Browser APIs may omit protected tab URLs without an activeTab grant. Opening popup.html as an ordinary tab does not invoke the extension action. A missing URL therefore shows Unavailable rather than guessing a scheme; a provided restricted URL shows Unsupported. See the [activeTab access model](https://developer.chrome.com/docs/extensions/develop/concepts/activeTab). No new permissions are requested.
+- Site controls start disabled, stay disabled on unsupported/unavailable pages, and never write an empty hostname entry. Rules are hidden there; version, shortcut display and Edit Shortcut remain available. There is no Rule Manager yet (#2).
+- Before a site action, verify the tab still exists, has no pending navigation and retains its original URL. A changed page requires reloading controls. Failed communication on an eligible website attempts complete manifest-based JS/CSS injection once; failure shows a distinct connection error with Retry. URL eligibility cannot predict every browser policy or restricted document, so connection errors also explain that browser access may be restricted.
+- Retry for a persisted delete/reset/toggle only resynchronizes from current storage. It never replays the destructive operation. Storage errors offer Reload controls. This does not introduce storage transactions or change the legacy schema.
+
+### Popup manual checks
+
+1. On a normal website, verify footer version matches the installed manifest and the shortcut matches browser settings. Customize/unassign the shortcut, reopen the popup, and verify the new binding/Not set.
+2. On chrome://settings, an extension page, and Chrome Web Store, verify an explicit unsupported message, disabled Pick/toggle/reset controls, hidden rules and a working Edit Shortcut link.
+3. Simulate a missing/inaccessible tab or storage read failure: verify Unavailable and Retry can reload controls.
+4. On an eligible website with a failed connection/injection, verify a connection error and Retry rather than an unsupported label. Restore access, retry and verify picker activation.
+5. Reload the extension while a website remains open, then start the picker to exercise complete fallback injection.
+6. Navigate the selected tab before acting on its popup: controls must refresh or disable before writing rules to an outdated site.
+7. Cause communication to fail after deleting one rule, then retry: the remaining rule must not be deleted. Repeat for reset and toggle; verify storage and current-page blocking agree.

@@ -374,3 +374,12 @@ footer {
     outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
 }
+
+
+[hidden] { display: none !important; }
+button:disabled { opacity: .45; cursor: default; transform: none; }
+input:disabled + .slider { opacity: .45; cursor: default; }
+#page-notice { color: var(--text-secondary); font-size: 12px; line-height: 1.5; padding: 12px; border: 1px solid var(--border-light); border-radius: 10px; }
+#retry-action { color: var(--accent-cyan); margin-top: 8px; }
+#pick-element-btn { flex-wrap: wrap; }
+.shortcut-hint { font: 11px system-ui, sans-serif; }
