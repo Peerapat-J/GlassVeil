@@ -14,7 +14,7 @@
                 <img class="brand-icon" src="../icons/icon-32.png" alt="" />
                 <h1>Glass<span>Veil</span></h1>
             </div>
-            <div class="status-badge" id="status-badge">Active</div>
+            <div class="status-badge" id="status-badge">Loading</div>
         </header>
 
         <main>
@@ -25,13 +25,13 @@
                     <span class="value" id="current-domain">loading...</span>
                 </div>
                 <label class="switch">
-                    <input type="checkbox" id="blocker-toggle" checked aria-label="Enable element blocking for current site">
+                    <input type="checkbox" id="blocker-toggle" disabled aria-label="Enable element blocking for current site">
                     <span class="slider"></span>
                 </label>
             </section>
 
             <!-- Main Action -->
-            <button class="btn btn-primary" id="pick-element-btn">
+            <button class="btn btn-primary" id="pick-element-btn" disabled>
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="9" stroke-linecap="round" stroke-linejoin="round" />
                     <circle cx="12" cy="12" r="3" stroke-linecap="round" stroke-linejoin="round" />
@@ -41,11 +41,16 @@
                     <line x1="17" y1="12" x2="21" y2="12" stroke-linecap="round" />
                 </svg>
                 <span>Pick Element to Block</span>
-                <kbd class="shortcut-hint" id="shortcut-hint">(CMD + B)</kbd>
+                <kbd class="shortcut-hint" id="shortcut-hint">…</kbd>
             </button>
 
+            <section id="page-notice" hidden aria-label="Page status">
+                <p id="page-message" role="status" aria-live="polite"></p>
+                <button class="btn-text" id="retry-action" hidden>Retry</button>
+            </section>
+
             <!-- Rules List Section -->
-            <section class="rules-section">
+            <section class="rules-section" id="rules-section" hidden>
                 <h2>Blocked Elements on this site (<span id="rule-count">0</span>)</h2>
                 <div class="rules-list-container">
                     <ul id="rules-list" class="rules-list">
@@ -57,15 +62,17 @@
         </main>
 
         <footer>
-            <span class="version">v1.0.0</span>
+            <span class="version" id="extension-version"></span>
             <div class="footer-actions">
                 <a class="btn-text" id="shortcut-settings-link" href="#" title="Customize keyboard shortcut">Edit
                     Shortcut</a>
-                <button class="btn-text" id="clear-all-btn">Reset Site Rules</button>
+                <button class="btn-text" id="clear-all-btn" disabled style="display: none;">Reset Site Rules</button>
             </div>
         </footer>
     </div>
     <script src="../shared/storage.js"></script>
+    <script src="../shared/tab-access.js"></script>
+    <script src="metadata.js"></script>
     <script src="popup.js"></script>
 </body>
 

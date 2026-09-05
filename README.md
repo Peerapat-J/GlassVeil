@@ -14,6 +14,8 @@ Instead of relying on a predefined filter list, GlassVeil provides a visual elem
 - Per-site blocking rules
 - Enable or disable blocking for the current site
 - View, delete, and reset saved rules from the popup
+- Clear unsupported-page messages and retry for connection errors
+- Popup version and shortcut reflect the installed extension settings
 - Default keyboard shortcut:
   - macOS: `Cmd + B`
   - Windows/Linux: `Ctrl + B`
@@ -87,7 +89,7 @@ Start the element picker with:
 - macOS: `Command + B`
 - Windows/Linux: `Ctrl + B`
 
-The shortcut can be changed at `chrome://extensions/shortcuts`.
+The popup shows the currently configured shortcut, or **Not set** if none is assigned. Change it through **Edit Shortcut** or `chrome://extensions/shortcuts`. The footer version comes from the installed extension manifest.
 
 ## Permissions
 
@@ -110,6 +112,8 @@ chrome://
 edge://
 about:
 ```
+
+The popup disables site controls on unsupported pages while keeping **Edit Shortcut** available. If a normal website cannot be reached, it shows a connection error with **Retry**; refresh the page first. Missing tab details can also be retried.
 
 Some websites frequently change their HTML structure or generated class names. In those cases, a previously saved selector may stop matching or may require adjustment.
 
