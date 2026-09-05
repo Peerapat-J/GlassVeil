@@ -58,22 +58,10 @@ header {
     position: relative;
 }
 
-.logo-glow {
-    position: absolute;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: var(--accent-cyan);
-    filter: blur(8px);
-    opacity: 0.6;
-}
-
-.logo-shield {
-    width: 14px;
-    height: 16px;
-    background: var(--gradient-neon);
-    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-    z-index: 1;
+.brand-icon {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
 }
 
 h1 {

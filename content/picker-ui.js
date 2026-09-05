@@ -2,7 +2,7 @@
 (function (root) {
     "use strict";
 
-    const createPickerUI = ({ document, window, shadowRoot, clampPanelPosition, onCancel, onSelectParent, onConfirm, onTogglePreview }) => {
+    const createPickerUI = ({ document, window, shadowRoot, clampPanelPosition, onCancel, onSelectParent, onConfirm, onTogglePreview, onRefresh, iconUrl }) => {
         const style = document.createElement("style");
         style.textContent = `
             :host {
@@ -119,12 +119,7 @@
                 gap: 8px;
             }
 
-            .logo-shield {
-                width: 10px;
-                height: 12px;
-                background: linear-gradient(135deg, #00f2fe 0%, #7f00ff 100%);
-                clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-            }
+
 
             h3 {
                 margin: 0;
@@ -267,6 +262,25 @@
             }
         `;
 
+        style.textContent += `
+            .picker-panel { width: 500px; max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; }
+            .brand-icon { width: 28px; height: 28px; object-fit: contain; flex: 0 0 auto; }
+            .drag-hint { white-space: nowrap; }
+            .impact-outline { border-color: #ffcf70; box-shadow: 0 0 0 1px rgba(255,207,112,.35); }
+            .impact-outline .selected-outline-label { background: #ffcf70; color: #171717; }
+            #impact-section[hidden] { display: none; }
+            #impact-section { font: 12px/1.45 system-ui, sans-serif; color: #dce4ee; }
+            #impact-summary { margin: 0 0 6px; }
+            .warning { color: #ffcf70; }
+            #impact-list { list-style: none; padding: 0; margin: 0; max-height: 112px; overflow-y: auto; }
+            #impact-list li { display: flex; gap: 12px; justify-content: space-between; padding: 3px 0; }
+            #impact-list code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+            #impact-list span { flex: 0 0 auto; max-width: 55%; text-align: right; }
+            #impact-notice { color: #ffcf70; margin: 6px 0 0; }
+            #impact-refresh { margin-top: 6px; }
+            .btn:disabled { opacity: .45; cursor: default; }
+        `;
+
         const outlineLayer = document.createElement("div");
         outlineLayer.id = "selected-outline-layer";
         outlineLayer.className = "selected-outline-layer";
@@ -277,7 +291,7 @@
         container.innerHTML = `
             <div class="panel-header" id="panel-drag-handle">
                 <div class="title-area">
-                    <div class="logo-shield"></div>
+                    <img class="brand-icon" alt="" />
                     <h3>GlassVeil Picker</h3>
                     <span class="selection-count" id="selection-count">0 selected</span>
                     <span class="drag-hint">drag to move</span>
@@ -287,6 +301,12 @@
             <div class="selector-box">
                 <input type="text" class="selector-input" id="selector-display" readonly placeholder="Hover element to inspect..." />
             </div>
+            <section id="impact-section" hidden aria-label="Selector impact">
+                <p id="impact-summary" role="status" aria-live="polite"></p>
+                <ul id="impact-list"></ul>
+                <button class="btn btn-secondary btn-text" id="impact-refresh">Refresh matches</button>
+                <p id="impact-notice" role="status" aria-live="polite"></p>
+            </section>
             <div class="action-row">
                 <div class="control-group">
                     <button class="btn btn-secondary btn-text" id="parent-btn" style="display: none;">Select Parent</button>
@@ -301,6 +321,8 @@
                 </div>
             </div>
         `;
+        container.querySelector(".brand-icon").src = iconUrl;
+        container.querySelector("#impact-refresh").addEventListener("click", onRefresh);
 
         shadowRoot.appendChild(style);
         shadowRoot.appendChild(outlineLayer);

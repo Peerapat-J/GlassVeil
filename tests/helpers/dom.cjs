@@ -29,7 +29,7 @@ function createChrome(initial = {}) {
     return {
         writes,
         snapshot: () => structuredClone(data),
-        runtime: { onMessage: event(), getManifest: () => manifest },
+        runtime: { onMessage: event(), getManifest: () => manifest, getURL: path => `chrome-extension://fixture/${path}` },
         storage: {
             onChanged: changes,
             local: {
