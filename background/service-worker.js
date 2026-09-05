@@ -28,7 +28,8 @@ async function activatePickerOnTab(tab) {
             // Dynamically inject content scripts if not already present
             await chrome.scripting.executeScript({
                 target: { tabId: tab.id },
-                files: ["content/content.js"]
+                files: chrome.runtime.getManifest().content_scripts
+                    .find(script => script.js?.includes("content/content.js")).js
             });
 
             await chrome.scripting.insertCSS({

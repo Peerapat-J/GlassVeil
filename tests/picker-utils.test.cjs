@@ -5,10 +5,11 @@ const {
     isPickerStateClass,
     formatSelectedOutlineLabel,
     clampPanelPosition,
-    mergeUniqueSelectors,
     formatConfirmButtonLabel,
     formatSelectionSummary
-} = require("../content/content.js");
+} = require("../content/picker-utils.js");
+
+const { mergeUniqueSelectors } = require("../shared/storage.js");
 
 test("isPickerStateClass ignores temporary picker classes during selector generation", () => {
     assert.equal(isPickerStateClass("glassveil-picker-hovered"), true);

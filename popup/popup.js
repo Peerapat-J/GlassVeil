@@ -17,6 +17,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         chrome.tabs.create({ url: "chrome://extensions/shortcuts" });
     });
 
+    const storage = globalThis.GlassVeilStorage.createStorage({
+        area: chrome.storage.local,
+        changes: chrome.storage.onChanged
+    });
     let currentTab = null;
     let currentDomain = "";
 
@@ -43,16 +47,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // 2. Load stored extension state
     const loadState = async () => {
-        const { disabledSites = {}, rules = {} } = await chrome.storage.local.get(["disabledSites", "rules"]);
-    
-        // Check if blocking is active for this domain
-        const isEnabled = !disabledSites[currentDomain];
-        toggle.checked = isEnabled;
-        updateStatusBadge(isEnabled);
-
-        // Load blocked elements list
-        const siteRules = rules[currentDomain] || [];
-        renderRules(siteRules);
+        const site = await storage.readSite(currentDomain);
+        toggle.checked = site.enabled;
+        updateStatusBadge(site.enabled);
+        renderRules(site.selectors);
     };
 
     const updateStatusBadge = (isEnabled) => {
@@ -109,15 +107,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const isEnabled = toggle.checked;
         updateStatusBadge(isEnabled);
 
-        const { disabledSites = {} } = await chrome.storage.local.get("disabledSites");
-    
-        if (isEnabled) {
-            delete disabledSites[currentDomain];
-        } else {
-            disabledSites[currentDomain] = true;
-        }
-
-        await chrome.storage.local.set({ disabledSites });
+        await storage.setEnabled(currentDomain, isEnabled);
 
         // Send status change message to content script
         try {
@@ -141,7 +131,8 @@ document.addEventListener("DOMContentLoaded", async () => {
                 // Dynamically inject content scripts if not already present
                 await chrome.scripting.executeScript({
                     target: { tabId: currentTab.id },
-                    files: ["content/content.js"]
+                    files: chrome.runtime.getManifest().content_scripts
+                        .find(script => script.js?.includes("content/content.js")).js
                 });
                 await chrome.scripting.insertCSS({
                     target: { tabId: currentTab.id },
@@ -158,19 +149,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // 5. Delete specific rule
     const deleteRule = async (index) => {
-        const { rules = {} } = await chrome.storage.local.get("rules");
-        const siteRules = rules[currentDomain] || [];
-    
-        // Remove element at index
-        siteRules.splice(index, 1);
-    
-        if (siteRules.length === 0) {
-            delete rules[currentDomain];
-        } else {
-            rules[currentDomain] = siteRules;
-        }
-
-        await chrome.storage.local.set({ rules });
+        const siteRules = await storage.deleteRule(currentDomain, index);
         renderRules(siteRules);
 
         // Send updated rules message to tab content script
@@ -189,10 +168,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const confirmReset = confirm(`Are you sure you want to reset all rules for ${currentDomain}?`);
         if (!confirmReset) return;
 
-        const { rules = {} } = await chrome.storage.local.get("rules");
-        delete rules[currentDomain];
-    
-        await chrome.storage.local.set({ rules });
+        await storage.resetSite(currentDomain);
         renderRules([]);
 
         // Send clear message to tab content script
