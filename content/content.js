@@ -20,6 +20,9 @@
         utils: globalThis.GlassVeilPickerUtils,
         createSelectionState: globalThis.GlassVeilPickerState.createSelectionState,
         createPickerUI: globalThis.GlassVeilPickerUI.createPickerUI,
+        analyzeImpact: globalThis.GlassVeilSelectorImpact.analyzeImpact,
+        sameImpact: globalThis.GlassVeilSelectorImpact.sameImpact,
+        iconUrl: chrome.runtime.getURL("icons/icon-32.png"),
         saveSelectors: async selectors => {
             activeSelectors = await storage.appendSelectors(currentDomain, selectors);
             ruleEngine.apply(activeSelectors, isBlockerEnabled);

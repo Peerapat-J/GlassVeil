@@ -9,6 +9,7 @@ GlassVeil loads directly as a Manifest V3 extension. There is no bundle or build
 | `content/content.js` | The only content-script entry point: creates instances, loads site state, connects storage changes and runtime messages. |
 | `shared/storage.js` | Shared popup/picker storage API, validation of the existing hostname-to-string-array schema, append/delete/reset/site-toggle operations and change subscription. Future schema migration belongs here. |
 | `content/selector-generator.js` | Selector generation with explicit document, Node, CSS.escape and temporary-class dependencies. The existing ID/class/path algorithm is unchanged. |
+| `content/selector-impact.js` | Evaluates each selection against the document, isolates invalid candidates, deduplicates matches, and compares reviewed element identities before save. |
 | `content/rule-engine.js` | Owns one style element, early attachment, applying/clearing CSS and isolation of invalid selectors. |
 | `content/picker-state.js` | Owns selection order and the active element for one picker; no DOM listeners or Chrome APIs. |
 | `content/picker-utils.js` | Pure labels, position clamping and temporary-class classification. |
@@ -26,7 +27,7 @@ Definition-only modules publish frozen factory APIs in the extension's isolated 
 - Selectors still use the existing stable-looking ID/class heuristics, sibling `:nth-child()` fallback and five-level path limit. Generated selector text is covered by fixtures together with target identity and match count.
 - Rule application now parses selectors and CSS rules separately before joining valid CSS. A malformed selector or unterminated CSS comment cannot consume later valid rules. Empty/non-string entries are ignored and duplicate selectors produce one CSS rule.
 - Removing a disconnected active selection now falls back to the remaining selection rather than retaining a detached active element.
-- Preview continues to affect selected elements; full selector-impact preview belongs to #15.
+- Preview hides the union of all valid selector matches and restores original inline display values and priorities. Cyan outlines identify selections; amber outlines show additional matches.
 
 ## Coverage and remaining feature work
 
@@ -54,3 +55,15 @@ The shared storage API still uses Chrome storage read/modify/write operations. I
 7. Toggle the site off/on, delete one rule, then reset the site. Verify immediate updates and that rules for another hostname remain unchanged.
 8. On a tab opened before reloading the extension, start the picker from the popup and context menu to exercise fallback injection. Confirm the complete module set loads and repeated activation does not duplicate panels.
 9. With a disposable test profile, save an invalid selector alongside a valid selector. Confirm valid rules still hide their targets and no script exception prevents later updates.
+
+
+## Selector impact policy (#15)
+
+- Each selection reports a match count; the total is the union of all valid matches. Duplicate selectors are saved once.
+- A selector matching more than one element, or a combined total of at least 10 elements, requires a separate confirmation.
+- Invalid/empty selectors, zero matches, selectors that no longer match their selected target, and selectors covering the page/picker root cannot be saved. Other valid selections remain usable and the summary states how many selections will be skipped.
+- Counts refresh on selection/deselection, parent selection, Preview Hide, Refresh matches, and immediately before saving. They are snapshots, not a continuous page observer. A change since the displayed snapshot requires another review; approval is also rechecked after the confirmation dialog. Equal counts with different element identities still invalidate the review.
+- Cancelling, saving, deselecting or refreshing a changed selector clears obsolete preview overlays. A future Undo action (#13) should refresh selection controls through the same path.
+- Saving errors keep the picker available for retry. No selector-generation or storage-schema changes are included.
+
+The toolbar, popup and picker use the owner-selected artwork documented in `icons/source/README.md`.

@@ -7,6 +7,7 @@ Instead of relying on a predefined filter list, GlassVeil provides a visual elem
 ## Features
 
 - Visual element picker for selecting one or more page elements
+- Per-selector match counts, combined impact preview, and confirmation for broad rules
 - Cosmetic blocking using locally stored CSS selectors
 - Per-site blocking rules
 - Enable or disable blocking for the current site
@@ -54,8 +55,9 @@ Instead of relying on a predefined filter list, GlassVeil provides a visual elem
 5. Click one or more elements to select them. Click a selected element again to remove it from the current selection.
 6. Optionally use:
    - **Select Parent** to target a larger container
-   - **Preview Hide** to test the selected elements before saving
-7. Click **Block Selected**.
+   - **Preview Hide** to test all matching elements before saving
+   - **Refresh matches** after the page changes
+7. Review each selector and the unique total. Amber outlines mark additional elements that would be hidden. Click **Block** to save; broad rules require another confirmation.
 
 <img src="readmeAsset/previewHide.png" alt="GlassVeil Preview Hide control" width="420">
 
