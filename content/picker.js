@@ -13,6 +13,8 @@
         const impactOutlineBoxes = new Map();
         let currentImpact = null;
         let saveInFlight = false;
+        let precision = "exact";
+        const generateCurrentSelector = element => generateSelector(element, { mode: precision });
 
         // UI container references
         let pickerRoot = null;
@@ -132,7 +134,7 @@
             for (const element of selection) {
                 if (!element.isConnected) selection.delete(element);
             }
-            currentImpact = analyzeImpact({ elements: selection, generateSelector, document, pickerRoot });
+            currentImpact = analyzeImpact({ elements: selection, generateSelector: generateCurrentSelector, document, pickerRoot });
             if (isPreviewEnabled()) currentImpact.matches.forEach(previewElement);
             return currentImpact;
         };
@@ -210,6 +212,7 @@
 
             if (confirmBtn) {
                 confirmBtn.style.display = hasSelection ? "block" : "none";
+                shadowRoot.getElementById("precision-mode").disabled = saveInFlight;
                 confirmBtn.disabled = saveInFlight || currentImpact.selectors.length === 0;
                 confirmBtn.textContent = saveInFlight ? "Saving…" : `Block ${currentImpact.skipped ? "valid " : ""}(${currentImpact.total})`;
             }
@@ -221,6 +224,7 @@
         const startPicker = () => {
             if (isPickerActive || saveInFlight) return;
             isPickerActive = true;
+            precision = "exact";
             selection.clear();
             hoveredElement = null;
             previewedElements.clear();
@@ -242,6 +246,9 @@
             // Inject Shadow DOM UI Markup & Style
             pickerPanel = createPickerUI({
                 document, window, shadowRoot, clampPanelPosition, iconUrl,
+                onPrecisionChange: value => {
+                    if (!saveInFlight) { precision = value === "similar" ? "similar" : "exact"; updateSelectionControls(); }
+                },
                 onRefresh: () => { if (!saveInFlight) updateSelectionControls(); },
                 onCancel: stopPicker,
                 onSelectParent: handleSelectParent,
@@ -317,7 +324,7 @@
 
             // Generate real-time CSS selector
             let selector = "";
-            try { selector = generateSelector(hoveredElement); } catch { /* Selection will report the invalid candidate. */ }
+            try { selector = generateCurrentSelector(hoveredElement); } catch { /* Selection will report the invalid candidate. */ }
             const displayInput = shadowRoot.getElementById("selector-display");
             if (displayInput && selection.size === 0) {
                 displayInput.value = selector;
@@ -435,6 +442,7 @@
             }
             saveInFlight = true;
             const button = shadowRoot.getElementById("confirm-btn");
+            shadowRoot.getElementById("precision-mode").disabled = true;
             button.disabled = true; button.textContent = "Saving…";
             try {
                 await saveSelectors(reviewed.selectors);
@@ -442,6 +450,7 @@
             } catch (err) {
                 console.error("[GlassVeil] Error saving/applying rules:", err);
                 if (shadowRoot) {
+                    shadowRoot.getElementById("precision-mode").disabled = false;
                     button.disabled = false; button.textContent = "Retry save";
                     shadowRoot.getElementById("impact-notice").textContent = "Could not save the rules. Please try again.";
                 }

@@ -69,3 +69,45 @@ test('impact picker: save failures keep the panel available for retry', async t 
     assert.match(fixture.shadow().querySelector('#impact-notice').textContent, /Could not save/);
     fail = false; fixture.click('confirm-btn'); await settle(); assert.equal(fixture.saved.length, 1);
 });
+test('precision picker: switching modes updates all matches, preview styles and confirmation', async t => {
+    const { createSelectorGenerator } = require('../content/selector-generator.js');
+    let generate;
+    const fixture = setup(t, (element, options) => {
+        generate ||= createSelectorGenerator({ document: element.ownerDocument, Node: element.ownerDocument.defaultView.Node,
+            CSS: element.ownerDocument.defaultView.CSS, isPickerStateClass: utils.isPickerStateClass });
+        return generate(element, options);
+    });
+    const mode = () => fixture.shadow().querySelector('#precision-mode');
+    const changeMode = value => { mode().value = value; mode().dispatchEvent(new fixture.window.Event('change')); };
+    fixture.first.click();
+    assert.equal(mode().value, 'exact');
+    assert.match(fixture.shadow().querySelector('#impact-summary').textContent, /hide 1 element/);
+    fixture.click('preview-toggle');
+    assert.equal(fixture.first.style.display, 'none');
+    assert.equal(fixture.second.style.display, 'block');
+    changeMode('similar');
+    assert.match(fixture.shadow().querySelector('#impact-summary').textContent, /hide 2 elements/);
+    assert.equal(fixture.second.style.display, 'none');
+    assert.equal(fixture.shadow().querySelectorAll('.impact-outline').length, 1);
+    changeMode('exact');
+    assert.equal(fixture.second.style.display, 'block');
+    assert.equal(fixture.shadow().querySelectorAll('.impact-outline').length, 0);
+    changeMode('similar');
+    fixture.click('confirm-btn'); await settle();
+    assert.deepEqual(fixture.saved, [['div.ad']]);
+    assert.equal(fixture.confirmations(), 1);
+    fixture.picker.start(); assert.equal(mode().value, 'exact');
+});
+test('precision picker: parent selection and multi-select use the current mode', t => {
+    const calls = [];
+    const fixture = setup(t, (element, options) => { calls.push([element, options.mode]); return `#${element.id}`; });
+    const parent = fixture.document.createElement('section'); parent.id = 'parent';
+    fixture.first.replaceWith(parent); parent.append(fixture.first);
+    fixture.first.click(); fixture.second.click();
+    const mode = fixture.shadow().querySelector('#precision-mode'); mode.value = 'similar';
+    mode.dispatchEvent(new fixture.window.Event('change'));
+    assert.deepEqual(calls.slice(-2), [[fixture.first, 'similar'], [fixture.second, 'similar']]);
+    fixture.second.click(); fixture.click('parent-btn');
+    assert.deepEqual(calls.at(-1), [parent, 'similar']);
+    assert.equal(fixture.shadow().querySelectorAll('.selected-outline').length, 1);
+});
