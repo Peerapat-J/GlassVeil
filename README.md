@@ -113,3 +113,20 @@ Some websites frequently change their HTML structure or generated class names. I
 GlassVeil stores rules and site settings locally in your browser using `chrome.storage.local`.
 
 It does not require an account, does not send saved rules to a server, and does not download a remote filter list.
+
+## Development workflow
+
+- `dev` is the integration branch. Start short-lived feature or fix branches from an up-to-date `dev` and open pull requests back to `dev`.
+- `main` is the release branch. Release reviewed work through a `dev` → `main` pull request.
+- After a release, fast-forward `dev` to `main` when possible so release merge commits and documentation stay in sync. If both branches have new commits, review their differences and merge deliberately; do not force-push to synchronize them.
+- Before switching branches, check `git status` and preserve any unfinished local work.
+
+Before merging, run `npm test`, syntax-check `popup/popup.js` and `background/service-worker.js` with `node --check`, and run `git diff --check` against the PR base. The test command also syntax-checks `content/content.js`.
+
+For changes affecting extension behavior, reload the unpacked extension at `chrome://extensions`, refresh a test page, and check:
+
+- Select two elements and confirm both numbered outlines appear; deselect one and select it again.
+- Drag the picker panel and confirm it stays within the viewport.
+- Toggle Preview Hide on/off, then cancel and confirm the page is restored.
+- Select and save elements, refresh the page, and confirm the saved rules still hide them.
+- Disable and re-enable the site, then delete a rule and confirm the page updates immediately.
