@@ -2,7 +2,7 @@
 (function (root) {
     "use strict";
 
-    const createPickerUI = ({ document, window, shadowRoot, clampPanelPosition, onCancel, onSelectParent, onConfirm, onTogglePreview, onRefresh, onPrecisionChange, iconUrl }) => {
+    const createPickerUI = ({ document, window, shadowRoot, clampPanelPosition, onCancel, onSelectParent, onConfirm, onTogglePreview, onRefresh, onPrecisionChange, onUndo, iconUrl }) => {
         const style = document.createElement("style");
         style.textContent = `
             :host {
@@ -266,6 +266,7 @@
             .picker-panel { width: 500px; max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; }
             .brand-icon { width: 28px; height: 28px; object-fit: contain; flex: 0 0 auto; }
             .drag-hint { white-space: nowrap; }
+            .precision-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
             .precision-control { display: flex; gap: 10px; align-items: center; color: #dce4ee; font-size: 12px; }
             #precision-mode { background: #171d29; color: #e2e8f0; border: 1px solid #475569; border-radius: 6px; padding: 5px 8px; }
             .impact-outline { border-color: #ffcf70; box-shadow: 0 0 0 1px rgba(255,207,112,.35); }
@@ -300,12 +301,15 @@
                 </div>
                 <span class="instruction" id="picker-instruction">Hover over elements and click to select</span>
             </div>
-            <label class="precision-control" for="precision-mode">Select
-                <select id="precision-mode">
-                    <option value="exact">Exact element</option>
-                    <option value="similar">Similar elements</option>
-                </select>
-            </label>
+            <div class="precision-row">
+                <label class="precision-control" for="precision-mode">Select
+                    <select id="precision-mode">
+                        <option value="exact">Exact element</option>
+                        <option value="similar">Similar elements</option>
+                    </select>
+                </label>
+                <button class="btn btn-secondary" id="undo-btn" disabled title="Undo selection (Cmd+Z / Ctrl+Z)" aria-keyshortcuts="Meta+Z Control+Z">Undo</button>
+            </div>
             <div class="selector-box">
                 <input type="text" class="selector-input" id="selector-display" readonly placeholder="Hover element to inspect..." />
             </div>
@@ -330,6 +334,7 @@
             </div>
         `;
         container.querySelector(".brand-icon").src = iconUrl;
+        container.querySelector("#undo-btn").addEventListener("click", onUndo);
         container.querySelector("#precision-mode").addEventListener("change", event => onPrecisionChange(event.target.value));
         container.querySelector("#impact-refresh").addEventListener("click", onRefresh);
 

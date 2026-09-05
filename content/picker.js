@@ -6,7 +6,8 @@
         const { formatSelectedOutlineLabel, clampPanelPosition, formatSelectionSummary } = utils;
         let isPickerActive = false;
         let hoveredElement = null;
-        const selection = createSelectionState();
+        const isAvailable = element => element.isConnected && element.getRootNode() === document;
+        const selection = createSelectionState({ isAvailable });
         const previewedElements = new Map();
         const selectedOutlineBoxes = new Map();
         let outlineUpdateFrame = null;
@@ -132,8 +133,9 @@
             // Preview changes inline styles; remove it before evaluating the real page.
             restorePreview();
             for (const element of selection) {
-                if (!element.isConnected) selection.delete(element);
+                if (!isAvailable(element)) element.classList.remove("glassveil-picker-hovered", "glassveil-picker-selected");
             }
+            selection.prune();
             currentImpact = analyzeImpact({ elements: selection, generateSelector: generateCurrentSelector, document, pickerRoot });
             if (isPreviewEnabled()) currentImpact.matches.forEach(previewElement);
             return currentImpact;
@@ -205,7 +207,6 @@
             if (previewToggle) {
                 previewToggle.style.display = hasSelection ? "flex" : "none";
                 if (!hasSelection) {
-                    previewToggle.classList.remove("checked");
                     restorePreview();
                 }
             }
@@ -217,6 +218,7 @@
                 confirmBtn.textContent = saveInFlight ? "Saving…" : `Block ${currentImpact.skipped ? "valid " : ""}(${currentImpact.total})`;
             }
 
+            shadowRoot.getElementById("undo-btn").disabled = saveInFlight || !selection.canUndo;
             syncSelectedOutlines();
             clampPickerPanelToViewport();
         };
@@ -250,6 +252,7 @@
                     if (!saveInFlight) { precision = value === "similar" ? "similar" : "exact"; updateSelectionControls(); }
                 },
                 onRefresh: () => { if (!saveInFlight) updateSelectionControls(); },
+                onUndo: handleUndo,
                 onCancel: stopPicker,
                 onSelectParent: handleSelectParent,
                 onConfirm: handleConfirmBlock,
@@ -384,11 +387,30 @@
             updateSelectionControls();
         };
 
-        // Keyboard shortcut handlers (Escape to cancel)
+        // Keyboard shortcuts stay local to the picker session.
         const handleKeyDown = (e) => {
             if (e.key === "Escape") {
                 stopPicker();
+                return;
             }
+            if (e.defaultPrevented || e.isComposing || e.altKey || e.shiftKey ||
+                !(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
+            const editable = e.composedPath().some(node => node.isContentEditable ||
+                node.matches?.('input, textarea, select, [contenteditable]:not([contenteditable="false"])'));
+            if (!editable && handleUndo(e)) e.preventDefault();
+        };
+
+        const handleUndo = (e) => {
+            if (!isPickerActive || saveInFlight) return false;
+            const previous = Array.from(selection);
+            const undone = selection.undo();
+            previous.forEach(element => element.classList.remove("glassveil-picker-hovered", "glassveil-picker-selected"));
+            if (hoveredElement) hoveredElement.classList.remove("glassveil-picker-hovered");
+            hoveredElement = null;
+            selection.forEach(element => element.classList.add("glassveil-picker-selected"));
+            updateSelectionControls();
+            if (undone) e.stopPropagation();
+            return undone;
         };
 
         // Action Bar Controller functions
@@ -397,18 +419,18 @@
             if (!selection.active || saveInFlight) return;
 
             const currentElement = selection.active;
+            if (!isAvailable(currentElement)) { updateSelectionControls(); return; }
             const parent = currentElement.parentElement;
             if (!parent || parent === document.body || parent === document.documentElement) {
                 window.alert("Cannot select parent any further.");
                 return;
             }
 
-            selection.delete(currentElement);
+            selection.replaceWithParent(parent);
             currentElement.classList.remove("glassveil-picker-hovered", "glassveil-picker-selected");
             restorePreviewForElement(currentElement);
 
             // Set parent as the new selected element
-            selection.add(parent);
             parent.classList.remove("glassveil-picker-hovered");
             parent.classList.add("glassveil-picker-selected");
 
@@ -442,6 +464,7 @@
             }
             saveInFlight = true;
             const button = shadowRoot.getElementById("confirm-btn");
+            shadowRoot.getElementById("undo-btn").disabled = true;
             shadowRoot.getElementById("precision-mode").disabled = true;
             button.disabled = true; button.textContent = "Saving…";
             try {
@@ -450,6 +473,7 @@
             } catch (err) {
                 console.error("[GlassVeil] Error saving/applying rules:", err);
                 if (shadowRoot) {
+                    shadowRoot.getElementById("undo-btn").disabled = !selection.canUndo;
                     shadowRoot.getElementById("precision-mode").disabled = false;
                     button.disabled = false; button.textContent = "Retry save";
                     shadowRoot.getElementById("impact-notice").textContent = "Could not save the rules. Please try again.";
