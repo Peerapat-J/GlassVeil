@@ -121,7 +121,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         toggle.checked = site.enabled; updateBadge(); renderRules(site.rules);
         const skipped = site.migration.skipped || 0;
         get("migration-message").hidden = !skipped;
-        get("migration-message").textContent = `${skipped} malformed legacy entries were skipped. Original data is kept in the local backup.`;
+        get("migration-message").textContent = `${skipped} malformed legacy ${skipped === 1 ? "entry was" : "entries were"} skipped. Original data is kept in the local backup.`;
         return site;
     };
     // Retry synchronization reads current storage; it never repeats a delete/reset.
