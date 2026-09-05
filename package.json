@@ -4,6 +4,8 @@
     "private": true,
     "description": "GlassVeil - Personal Element Blocker",
     "scripts": {
-        "test": "node --check content/content.js && node --test"
+        "test": "node --check content/content.js && node --test",
+        "check:syntax": "node --check content/content.js && node --check popup/popup.js && node --check background/service-worker.js",
+        "check:manifest": "node -e \"JSON.parse(require('node:fs').readFileSync('manifest.json', 'utf8'))\""
     }
 }

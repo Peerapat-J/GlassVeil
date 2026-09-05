@@ -121,7 +121,29 @@ It does not require an account, does not send saved rules to a server, and does 
 - After a release, fast-forward `dev` to `main` when possible so release merge commits and documentation stay in sync. If both branches have new commits, review their differences and merge deliberately; do not force-push to synchronize them.
 - Before switching branches, check `git status` and preserve any unfinished local work.
 
-Before merging, run `npm test`, syntax-check `popup/popup.js` and `background/service-worker.js` with `node --check`, and run `git diff --check` against the PR base. The test command also syntax-checks `content/content.js`.
+### Automated validation
+
+Use Node.js 22 LTS (recorded in `.nvmrc`). With nvm installed, run `nvm install` and `nvm use` from the repository root. There are currently no npm dependencies, so no install step or dependency cache is needed.
+
+Run the same checks as CI:
+
+```sh
+npm test
+npm run check:syntax
+npm run check:manifest
+git fetch origin
+git diff --check origin/dev...HEAD
+git diff --check
+git diff --cached --check
+```
+
+For a release PR, replace `origin/dev` with `origin/main`. The first diff checks committed PR changes; the other two check unstaged and staged changes locally.
+
+GitHub Actions runs these validations on every pull request and on pushes to `dev` or `main`, using a read-only repository token. PR checks run against the proposed merge, and whitespace checks compare it with the PR base. Push checks compare the previous and new commits (or the empty tree for a newly created branch).
+
+`npm test` includes the classic content-script syntax gate. `check:syntax` checks the content, popup, and service-worker scripts, and `check:manifest` parses `manifest.json`. Add future linting, packaging, or browser checks as separate workflow steps with matching local commands.
+
+### Browser validation
 
 For changes affecting extension behavior, reload the unpacked extension at `chrome://extensions`, refresh a test page, and check:
 
