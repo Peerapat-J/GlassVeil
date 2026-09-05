@@ -147,3 +147,19 @@ test('popup: reopening reads a changed binding instead of caching the old shortc
     assert.equal((await fixture(t, { os: 'win', shortcut: 'Ctrl+K' })).get('shortcut-hint').textContent, 'Ctrl + K');
     assert.equal((await fixture(t, { os: 'win', shortcut: 'Alt+J' })).get('shortcut-hint').textContent, 'Alt + J');
 });
+test('popup: failed rule toggle keeps the saved state and can retry the same change', async t => {
+    const { window, chrome, get } = await fixture(t);
+    const checkbox = () => window.document.querySelector('.rule-enabled');
+    const originalSet = chrome.storage.local.set;
+    chrome.storage.local.set = async () => { throw new Error('storage offline'); };
+    checkbox().click(); await settle();
+    assert.equal(chrome.snapshot().ruleStore.rules['example.com'][0].enabled, true);
+    assert.equal(checkbox().checked, true);
+    assert.match(get('page-message').textContent, /storage offline/);
+    assert.equal(checkbox().disabled, false);
+    chrome.storage.local.set = originalSet;
+    checkbox().click(); await settle();
+    assert.equal(chrome.snapshot().ruleStore.rules['example.com'][0].enabled, false);
+    assert.equal(checkbox().checked, false);
+    assert.equal(get('page-notice').hidden, true);
+});

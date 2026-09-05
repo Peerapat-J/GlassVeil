@@ -73,7 +73,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             enabled.className = "rule-enabled"; enabled.setAttribute("aria-label", `Enable rule ${rule.selector}`);
             enabled.addEventListener("change", () => {
                 const value = enabled.checked;
-                runAction(async () => { await storage.updateRule(currentDomain, rule.id, { enabled: value }); await syncSite(); });
+                runAction(async () => {
+                    try { await storage.updateRule(currentDomain, rule.id, { enabled: value }); }
+                    catch (error) { enabled.checked = rule.enabled; throw error; }
+                    await syncSite();
+                });
             });
             const heading = document.createElement("div"); heading.className = "rule-heading"; heading.append(enabled, text);
             const status = document.createElement("span"); status.className = "rule-status"; status.textContent = "Checking…";
