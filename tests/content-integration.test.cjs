@@ -1,3 +1,4 @@
+const windowStorage = chrome => require('../shared/storage.js').createStorage({ request: chrome.runtime.sendMessage, changes: chrome.storage.onChanged });
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { createDOM, createChrome, load, settle, manifest } = require('./helpers/dom.cjs');
@@ -50,7 +51,7 @@ test('picker: multi-select, parent replacement, preview and cancel restore the p
 test('picker: saving uses shared storage and applies hostname rules immediately', async t => {
     const { document, chrome, start, shadow } = await fixture(t, { rules: { 'other.com': ['.keep'] } });
     start(); document.querySelector('#banner').click(); shadow().querySelector('#confirm-btn').click(); await settle();
-    assert.deepEqual(chrome.snapshot().rules['example.com'], ['#banner']);
+    assert.deepEqual(chrome.snapshot().ruleStore.rules['example.com'].map(rule => rule.selector), ['#banner']);
     assert.deepEqual(chrome.snapshot().rules['other.com'], ['.keep']);
     assert.match(document.querySelector('#glassveil-injected-style').textContent, /#banner/);
     assert.equal(document.querySelector('#glassveil-picker-root'), null);
@@ -61,11 +62,11 @@ test('bootstrap: legacy rules, disabled sites and cross-page storage events use 
     });
     const style = () => document.querySelector('#glassveil-injected-style').textContent;
     assert.equal(style(), '');
-    await chrome.storage.local.set({ disabledSites: {} }); await settle();
+    await windowStorage(chrome).setEnabled('example.com', true); await settle();
     assert.match(style(), /#banner/); assert.doesNotMatch(style(), /#sponsor/);
-    await chrome.storage.local.set({ rules: { 'example.com': ['[', '#sponsor'] } }); await settle();
+    await windowStorage(chrome).resetSite('example.com'); await windowStorage(chrome).appendSelectors('example.com', ['[', '#sponsor']); await settle();
     assert.match(style(), /#sponsor/); assert.doesNotMatch(style(), /#banner/);
-    await chrome.storage.local.set({ rules: {} }); await settle(); assert.equal(style(), '');
+    await windowStorage(chrome).resetSite('example.com'); await settle(); assert.equal(style(), '');
 });
 test('picker undo: restores parent child, deselection, outlines, active selector and preview', async t => {
     const { document, start, shadow, chrome } = await fixture(t);
@@ -86,7 +87,7 @@ test('picker undo: restores parent child, deselection, outlines, active selector
     assert.equal(shadow().querySelector('#selection-count').textContent, '0 selected');
     assert.equal(shadow().querySelectorAll('.selected-outline').length, 0);
     assert.equal(shadow().querySelector('#undo-btn').disabled, true);
-    assert.equal(chrome.writes.length, 0);
+    assert.equal(chrome.writes.length, 1); // The only write is migration, not Undo.
 });
 test('picker undo: Cmd/Ctrl+Z preserve editable fields and ignore redo/composition', async t => {
     const { window, document, start, shadow } = await fixture(t);
@@ -125,7 +126,7 @@ test('picker undo: removed targets clean styles and history; cancel and save res
     start(); assert.equal(shadow().querySelector('#undo-btn').disabled, true);
     document.querySelector('#sponsor').click(); shadow().querySelector('#confirm-btn').click(); await settle();
     start(); assert.equal(shadow().querySelector('#undo-btn').disabled, true);
-    assert.deepEqual(chrome.snapshot().rules['example.com'], ['.saved', '#sponsor']);
+    assert.deepEqual(chrome.snapshot().ruleStore.rules['example.com'].map(rule => rule.selector), ['.saved', '#sponsor']);
 });
 test('picker undo: Select Parent on a detached subtree cleans selection without marking the detached parent', async t => {
     const { document, start, shadow } = await fixture(t);

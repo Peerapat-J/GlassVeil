@@ -13,7 +13,9 @@ Instead of relying on a predefined filter list, GlassVeil provides a visual elem
 - Cosmetic blocking using locally stored CSS selectors
 - Per-site blocking rules
 - Enable or disable blocking for the current site
-- View, delete, and reset saved rules from the popup
+- Enable, disable, edit, test, and delete individual rules
+- Match counts and invalid-selector diagnostics in the popup
+- Reset saved rules for the current website
 - Clear unsupported-page messages and retry for connection errors
 - Popup version and shortcut reflect the installed extension settings
 - Default keyboard shortcut:
@@ -74,9 +76,17 @@ The selectors are saved for the current domain and applied immediately.
 
 Use the switch in the popup to enable or disable all GlassVeil rules for the current website.
 
+### Manage individual rules
+
+Each saved rule has its own checkbox, current-page match count, **Test**, **Edit**, and **Delete** actions. Unchecking a rule keeps it saved while stopping its effect. Invalid selectors are labeled, and **0 matches** means the rule does not match the current page.
+
+**Test** temporarily pauses GlassVeil blocking and draws amber outlines for five seconds. Click **Done** to finish early. Blocking then resumes using the latest settings. Elements hidden by the website's own CSS may have no visible outline.
+
+**Edit** validates the new selector before saving and asks for confirmation when it matches several elements. Existing rules upgrade automatically to records with stable IDs; the original legacy storage is retained as a local rollback snapshot. See [storage and migration details](docs/architecture.md#structured-rules-and-migration-17--12).
+
 ### Delete a saved rule
 
-Open the popup and click the delete icon next to the saved selector.
+Open the popup and click **Delete** next to the saved selector.
 
 ### Reset all rules for a site
 

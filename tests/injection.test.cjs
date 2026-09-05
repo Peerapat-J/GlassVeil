@@ -13,6 +13,7 @@ function injectionChrome() {
         create: async () => {},
         sendMessage: async (tabId, message) => {
             messages.push({ tabId, message });
+            if (message.action === 'inspectRules') return { rules: [] };
             if (messages.length === 1) throw new Error('No receiving content script');
             return { status: 'picker_started' };
         }
@@ -44,7 +45,7 @@ test('background fallback injects the same complete manifest list for context-me
     fixture.chrome.contextMenus = { create() {}, onClicked: event() };
     fixture.chrome.commands = { onCommand: event() };
     const context = vm.createContext({ chrome: fixture.chrome, console, URL });
-    context.importScripts = file => vm.runInContext(readFileSync(resolve(repo, 'background', file), 'utf8'), context);
+    context.importScripts = (...files) => files.forEach(file => vm.runInContext(readFileSync(resolve(repo, 'background', file), 'utf8'), context));
     vm.runInContext(readFileSync(resolve(repo, 'background/service-worker.js'), 'utf8'), context);
     await context.activatePickerOnTab({ id: 7, url: 'https://example.com/article' });
     verify(fixture);
@@ -62,14 +63,15 @@ test('background fallback injects the same complete manifest list for context-me
 test('popup delete and toggle use the shared legacy storage schema', async t => {
     const window = createDOM(t, readFileSync(resolve(repo, 'popup/popup.html'), 'utf8'));
     const chrome = createChrome({ rules: { 'example.com': ['.ad', '.second'], 'other.com': ['.keep'] } });
-    chrome.tabs = { query: async () => [{ id: 7, url: 'https://example.com/' }], get: async () => ({ id: 7, url: 'https://example.com/' }), sendMessage: async () => {}, create: async () => {} };
+    chrome.tabs = { query: async () => [{ id: 7, url: 'https://example.com/' }], get: async () => ({ id: 7, url: 'https://example.com/' }), sendMessage: async (id, message) => message.action === 'inspectRules' ? { rules: [] } : {}, create: async () => {} };
     window.chrome = chrome; window.confirm = () => true;
     load(window, ['shared/storage.js', 'shared/tab-access.js', 'popup/metadata.js', 'popup/popup.js']); await settle();
     assert.equal(window.document.querySelectorAll('.rule-text').length, 2);
     window.document.querySelector('.btn-delete').click(); await settle();
-    assert.deepEqual(chrome.snapshot().rules['example.com'], ['.second']);
+    assert.deepEqual(chrome.snapshot().ruleStore.rules['example.com'].map(rule => rule.selector), ['.second']);
     window.document.querySelector('#blocker-toggle').click(); await settle();
-    assert.equal(chrome.snapshot().disabledSites['example.com'], true);
+    assert.equal(chrome.snapshot().ruleStore.disabledSites['example.com'], true);
     window.document.querySelector('#clear-all-btn').click(); await settle();
-    assert.deepEqual(chrome.snapshot().rules, { 'other.com': ['.keep'] });
+    assert.equal(chrome.snapshot().ruleStore.rules['example.com'], undefined);
+    assert.deepEqual(chrome.snapshot().ruleStore.rules['other.com'].map(rule => rule.selector), ['.keep']);
 });

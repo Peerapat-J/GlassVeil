@@ -21,17 +21,20 @@
             observer.observe(document, { childList: true, subtree: true });
         }
 
+        let latest = [], siteEnabled = true, suspended = false;
         const apply = (selectors, enabled) => {
+            latest = selectors; siteEnabled = enabled;
             const appliedSelectors = [];
             const invalidSelectors = [];
-            if (!enabled || !Array.isArray(selectors)) {
+            if (suspended || !enabled || !Array.isArray(selectors)) {
                 style.textContent = "";
                 return { appliedSelectors, invalidSelectors };
             }
 
             const sheet = new document.defaultView.CSSStyleSheet();
             const seen = new Set();
-            for (const selector of selectors) {
+            for (const record of selectors) {
+                const selector = typeof record === "string" ? record : record?.enabled === true ? record.selector : null;
                 if (typeof selector !== "string" || !selector.trim() || seen.has(selector)) continue;
                 seen.add(selector);
                 try {
@@ -55,7 +58,7 @@
             style.remove();
         };
 
-        return Object.freeze({ apply, destroy });
+        return Object.freeze({ apply, destroy, suspend() { suspended = true; apply(latest, siteEnabled); }, resume() { suspended = false; apply(latest, siteEnabled); } });
     };
 
     const api = Object.freeze({ createRuleEngine });

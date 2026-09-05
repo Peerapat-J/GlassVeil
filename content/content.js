@@ -5,7 +5,7 @@
 
     const currentDomain = window.location.hostname;
     const storage = globalThis.GlassVeilStorage.createStorage({
-        area: chrome.storage.local,
+        request: message => chrome.runtime.sendMessage(message), area: chrome.storage.local,
         changes: chrome.storage.onChanged
     });
     const generateSelector = globalThis.GlassVeilSelectorGenerator.createSelectorGenerator({
@@ -13,7 +13,8 @@
         isPickerStateClass: globalThis.GlassVeilPickerUtils.isPickerStateClass
     });
     const ruleEngine = globalThis.GlassVeilRuleEngine.createRuleEngine({ document, MutationObserver });
-    let activeSelectors = [];
+    const diagnostics = globalThis.GlassVeilRuleDiagnostics.createDiagnostics({ document, window, ruleEngine });
+    let activeRules = [];
     let isBlockerEnabled = true;
     const picker = globalThis.GlassVeilPicker.createPicker({
         document, window, generateSelector,
@@ -24,17 +25,17 @@
         sameImpact: globalThis.GlassVeilSelectorImpact.sameImpact,
         iconUrl: chrome.runtime.getURL("icons/icon-32.png"),
         saveSelectors: async selectors => {
-            activeSelectors = await storage.appendSelectors(currentDomain, selectors);
-            ruleEngine.apply(activeSelectors, isBlockerEnabled);
+            activeRules = (await storage.appendSelectors(currentDomain, selectors, window.location.href)).rules;
+            ruleEngine.apply(activeRules, isBlockerEnabled);
         }
     });
 
     const applyRulesFromStorage = async () => {
         try {
             const site = await storage.readSite(currentDomain);
-            activeSelectors = site.selectors;
+            activeRules = site.rules;
             isBlockerEnabled = site.enabled;
-            ruleEngine.apply(activeSelectors, isBlockerEnabled);
+            ruleEngine.apply(activeRules, isBlockerEnabled);
         } catch (err) {
             console.error("[GlassVeil] Failed to load rules from storage:", err);
         }
@@ -44,15 +45,24 @@
     storage.subscribe(applyRulesFromStorage);
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === "startPicker") {
+            diagnostics.stop();
             picker.start();
             sendResponse({ status: "picker_started" });
+        } else if (message.action === "inspectRules") {
+            diagnostics.stop();
+            sendResponse({ rules: diagnostics.describe(message.rules) });
+        } else if (message.action === "testRule") {
+            picker.stop();
+            sendResponse(diagnostics.test(message.selector));
+        } else if (message.action === "stopRuleTest") {
+            diagnostics.stop(); sendResponse({ status: "stopped" });
         } else if (message.action === "toggleBlocker") {
             isBlockerEnabled = message.enabled;
-            ruleEngine.apply(activeSelectors, isBlockerEnabled);
+            ruleEngine.apply(activeRules, isBlockerEnabled);
             sendResponse({ status: "blocker_toggled" });
         } else if (message.action === "updateRules") {
-            activeSelectors = message.rules;
-            ruleEngine.apply(activeSelectors, isBlockerEnabled);
+            activeRules = message.rules;
+            ruleEngine.apply(activeRules, isBlockerEnabled);
             sendResponse({ status: "rules_updated" });
         }
         return true;

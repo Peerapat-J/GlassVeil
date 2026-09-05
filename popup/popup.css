@@ -383,3 +383,13 @@ input:disabled + .slider { opacity: .45; cursor: default; }
 #retry-action { color: var(--accent-cyan); margin-top: 8px; }
 #pick-element-btn { flex-wrap: wrap; }
 .shortcut-hint { font: 11px system-ui, sans-serif; }
+
+.rules-list li { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+.rule-heading { display:flex; align-items:center; gap:8px; min-width:0; }
+.rule-heading .rule-text { min-width:0; }
+.rule-status, .rule-scope, #migration-message { font-size:11px; color:var(--text-secondary); }
+.rule-status.invalid { color:var(--danger-red); }
+.rule-actions { display:flex; gap:16px; align-items:center; }
+.rule-editor { width:100%; padding:6px; background:var(--bg-dark); color:white; border:1px solid var(--border-light); border-radius:4px; margin-bottom:6px; }
+.rules-list form button { margin-right:12px; }
+.rules-list-container { max-height:280px; }

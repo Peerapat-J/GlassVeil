@@ -55,6 +55,7 @@
                 "content/picker-ui.js",
                 "content/selector-impact.js",
                 "content/picker.js",
+                "content/rule-diagnostics.js",
                 "content/content.js"
             ],
             "css": [
