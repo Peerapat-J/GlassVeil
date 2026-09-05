@@ -11,7 +11,7 @@ GlassVeil loads directly as a Manifest V3 extension. There is no bundle or build
 | `content/selector-generator.js` | Selector generation with explicit document, Node, CSS.escape and temporary-class dependencies. Generates, validates and deterministically scores ID/attribute/class/ancestor/positional candidates for exact or similar selection. |
 | `content/selector-impact.js` | Evaluates each selection against the document, isolates invalid candidates, deduplicates matches, and compares reviewed element identities before save. |
 | `content/rule-engine.js` | Owns one style element, early attachment, applying/clearing CSS and isolation of invalid selectors. |
-| `content/picker-state.js` | Owns selection order and the active element for one picker; no DOM listeners or Chrome APIs. |
+| `content/picker-state.js` | Owns selection order, active element and session action-history snapshots; accepts an availability predicate, with no DOM listeners or Chrome APIs. |
 | `content/picker-utils.js` | Pure labels, position clamping and temporary-class classification. |
 | `content/picker-ui.js` | Shadow DOM panel markup/styles and pointer dragging; accepts callbacks instead of saving rules itself. |
 | `content/picker.js` | Picker lifecycle, page events, preview restoration, selection outlines and interaction between state and UI. Saving is an injected callback. |
@@ -38,7 +38,7 @@ Tests use Node's test runner, jsdom and CSS.escape against local fixtures. `npm 
 | Selectors | Stable/generated/duplicate IDs, stable/unstable/temporary classes, escaped characters, no ID/classes, mixed siblings, invalid ID candidate, disconnected elements and Shadow DOM limits. | Website-specific stability remains heuristic; shadow roots are unsupported. Exact/similar modes and candidate scoring are covered. |
 | Rules | Site enabled/disabled, invalid isolation, empty/malformed/duplicate/overlapping rules, zero matches, CSS apply/clear and early attachment/cleanup. | Per-rule enabled state and diagnostics in #12 after #17. |
 | Storage | Legacy string arrays, repeated read without migration, malformed input, duplicate append, exact hostname matching, delete/reset/toggle, preserved other-site data, change subscriptions and failed persistence. | Structured/versioned migration in #17; path/subdomain scope rules in #21. |
-| Picker/loading | Selection order/active fallback, parent replacement, multi-select, preview/cancel, save, repeated initialization and complete fallback file order. | Undo action history in #13. |
+| Picker/loading | Selection order/active fallback, parent replacement, multi-select, preview/cancel, save, repeated initialization and complete fallback file order. | Undo history, parent/deselection restoration, disconnected-target filtering, keyboard/editable-field boundaries and preview cleanup are covered. |
 
 The document selector engine does not pierce shadow roots. Disconnected, shadow-root, page-root and picker targets return no candidate. Exact mode returns only a selector that currently matches its target alone; this does not guarantee that a future website redesign preserves the selector.
 
@@ -63,7 +63,7 @@ The shared storage API still uses Chrome storage read/modify/write operations. I
 - A selector matching more than one element, or a combined total of at least 10 elements, requires a separate confirmation.
 - Invalid/empty selectors, zero matches, selectors that no longer match their selected target, and selectors covering the page/picker root cannot be saved. Other valid selections remain usable and the summary states how many selections will be skipped.
 - Counts refresh on selection/deselection, precision changes, parent selection, Preview Hide, Refresh matches, and immediately before saving. They are snapshots, not a continuous page observer. A change since the displayed snapshot requires another review; approval is also rechecked after the confirmation dialog. Equal counts with different element identities still invalidate the review.
-- Cancelling, saving, deselecting or refreshing a changed selector clears obsolete preview overlays. A future Undo action (#13) should refresh selection controls through the same path.
+- Cancelling, saving, deselecting, undoing or refreshing a changed selector clears obsolete preview overlays through the same selection-control refresh path.
 - Saving errors keep the picker available for retry. Storage schema is unchanged.
 
 The toolbar, popup and picker use the owner-selected artwork documented in `icons/source/README.md`.
@@ -85,3 +85,21 @@ The toolbar, popup and picker use the owner-selected artwork documented in `icon
 3. Save a similar rule: declining the confirmation must leave the page unchanged; accepting must persist the reviewed selector.
 4. Select multiple targets and a parent, then change precision: counts, selection outlines and the preview must update together. A new picker session starts in Exact mode.
 5. On a fixture with a stable `data-testid` or ancestor ID, insert an unrelated sibling: generated rules should still identify the same target without a positional step.
+
+
+## Picker undo policy (#13)
+
+- Each selection, deselection and Select Parent action records the previous ordered selection and active element in a separate history stack. Parent replacement is one action, even when the parent was already selected. No-op actions add no history.
+- Undo restores the latest available snapshot. Detached targets, targets moved to another document, and targets moved into a shadow root are filtered out; no-op history is skipped. Checking history also releases unavailable references. Reinserted targets are not resurrected from previously discarded entries.
+- The visible Undo button is disabled for empty history or while saving. Cmd+Z and Ctrl+Z use the same handler; Shift/Alt variants and composition are ignored. Input, textarea, select and contenteditable event paths keep their native behavior, including inside the picker shadow root. Escape still cancels.
+- Undo refreshes selector impact using the current precision mode and current DOM, restores outdated preview styles and redraws outlines. Preview Hide preference stays on for the session even when the selection becomes empty, so undoing the last deselection can restore its preview. Precision and preview toggles themselves are not history actions.
+- Cancel, successful save and stop clear all selection history. A failed save retains it for recovery. Undo does not change previously saved rules or write storage; persisted-rule recovery remains #20.
+
+### Undo manual checks
+
+1. Select two targets, deselect the first, then Undo repeatedly: verify selection order/count, active selector and numbered outlines return correctly until Undo is disabled.
+2. Select a child and Select Parent. Enable Preview Hide and Undo: the parent should return, the child should be selected/previewed, and unrelated siblings should remain visible in Exact mode.
+3. In Similar mode, Undo selections with overlapping matches: verify amber outlines and deduplicated impact update, and undoing every selection restores all original inline display styles.
+4. Try Cmd+Z and Ctrl+Z on page/picker buttons, then in input/textarea/contenteditable controls: picker history should change only outside editable controls. Shift+modifier+Z should not undo.
+5. Remove a selected element with DevTools, then Undo: it must not reappear or leave stale preview/outline state. Repeat until no available history remains.
+6. Cancel/restart and save/restart: Undo should be disabled in each new session and existing saved rules should remain intact.

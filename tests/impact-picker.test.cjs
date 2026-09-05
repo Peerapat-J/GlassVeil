@@ -111,3 +111,28 @@ test('precision picker: parent selection and multi-select use the current mode',
     assert.deepEqual(calls.at(-1), [parent, 'similar']);
     assert.equal(fixture.shadow().querySelectorAll('.selected-outline').length, 1);
 });
+test('picker undo: similar matches, deduplicated counts and preview clean up through repeated undo', t => {
+    const fixture = setup(t); fixture.first.click(); fixture.second.click(); fixture.click('preview-toggle');
+    fixture.first.click(); fixture.click('undo-btn');
+    assert.equal(fixture.shadow().querySelector('#selection-count').textContent, '2 selected');
+    assert.match(fixture.shadow().querySelector('#impact-summary').textContent, /hide 2 elements/);
+    assert.equal(fixture.shadow().querySelectorAll('.impact-outline').length, 0);
+    fixture.click('undo-btn');
+    assert.equal(fixture.shadow().querySelectorAll('.impact-outline').length, 1);
+    assert.equal(fixture.second.style.display, 'none');
+    fixture.click('undo-btn');
+    assert.equal(fixture.shadow().querySelectorAll('.selected-outline').length, 0);
+    assert.equal(fixture.second.style.display, 'block');
+    assert.equal(fixture.second.style.getPropertyPriority('display'), 'important');
+});
+test('picker undo: disabled during save, available after failure', async t => {
+    let rejectSave;
+    const fixture = setup(t, () => '#first', () => new Promise((resolve, reject) => { rejectSave = reject; }));
+    fixture.first.click(); fixture.click('confirm-btn');
+    assert.equal(fixture.shadow().querySelector('#undo-btn').disabled, true);
+    fixture.document.body.dispatchEvent(new fixture.window.KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }));
+    assert.equal(fixture.shadow().querySelector('#selection-count').textContent, '1 selected');
+    rejectSave(new Error('storage failed')); await settle();
+    assert.equal(fixture.shadow().querySelector('#undo-btn').disabled, false);
+    fixture.click('undo-btn'); assert.equal(fixture.shadow().querySelector('#selection-count').textContent, '0 selected');
+});
