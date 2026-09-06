@@ -11,11 +11,15 @@
             }
 
             .picker-panel {
+                --silver-light: #e8edf3;
+                --silver-mid: #9ca3af;
+                --silver-dark: #3b4250;
+                --gradient-silver: linear-gradient(135deg, var(--silver-light) 0%, var(--silver-mid) 50%, var(--silver-dark) 100%);
                 position: fixed;
                 bottom: 24px;
                 left: 50%;
                 transform: translateX(-50%) translateY(100px);
-                background: rgba(13, 14, 21, 0.85);
+                background: rgba(13, 16, 19, 0.85);
                 backdrop-filter: blur(20px);
                 -webkit-backdrop-filter: blur(20px);
                 border: 1px solid rgba(255, 255, 255, 0.1);
@@ -103,14 +107,14 @@
 
             .drag-hint {
                 font-size: 10px;
-                color: rgba(103, 232, 249, 0.8);
+                color: var(--silver-mid);
                 letter-spacing: 0.3px;
                 pointer-events: none;
                 margin-left: 6px;
-                border: 1px solid rgba(103, 232, 249, 0.2);
+                border: 1px solid rgba(156, 163, 175, 0.3);
                 border-radius: 999px;
                 padding: 3px 7px;
-                background: rgba(103, 232, 249, 0.08);
+                background: rgba(156, 163, 175, 0.08);
             }
 
             .title-area {
@@ -132,9 +136,9 @@
             .selection-count {
                 font-size: 11px;
                 font-weight: 700;
-                color: #67e8f9;
-                background: rgba(103, 232, 249, 0.1);
-                border: 1px solid rgba(103, 232, 249, 0.18);
+                color: var(--silver-mid);
+                background: rgba(156, 163, 175, 0.08);
+                border: 1px solid rgba(156, 163, 175, 0.3);
                 border-radius: 999px;
                 padding: 3px 8px;
                 white-space: nowrap;
@@ -195,24 +199,26 @@
             }
 
             .btn-primary {
-                background: linear-gradient(135deg, #00f2fe 0%, #7f00ff 100%);
+                background: linear-gradient(100deg, transparent 0%, rgba(13, 17, 23, 0.70) 25%, rgba(13, 17, 23, 0.72) 72%, transparent 100%), var(--gradient-silver);
                 color: #ffffff;
-                box-shadow: 0 4px 10px rgba(0, 242, 254, 0.2);
+                border: 1px solid var(--silver-mid);
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+                box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), inset 0 -1px 1px rgba(232, 237, 243, 0.35), 0 4px 15px rgba(232, 237, 243, 0.16);
             }
 
             .btn-primary:hover {
                 transform: translateY(-1px);
-                box-shadow: 0 6px 14px rgba(0, 242, 254, 0.3);
+                box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.9), inset 0 -1px 1px rgba(232, 237, 243, 0.45), 0 6px 20px rgba(232, 237, 243, 0.24);
             }
 
             .btn-secondary {
-                background: rgba(255, 255, 255, 0.08);
-                color: #e2e8f0;
-                border: 1px solid rgba(255, 255, 255, 0.05);
+                background: rgba(156, 163, 175, 0.08);
+                color: var(--silver-light);
+                border: 1px solid rgba(156, 163, 175, 0.24);
             }
 
             .btn-secondary:hover {
-                background: rgba(255, 255, 255, 0.15);
+                background: rgba(156, 163, 175, 0.15);
             }
 
             .btn-text {
@@ -229,11 +235,15 @@
 
             /* Toggle Styles */
             .toggle-container {
+                background: transparent;
+                border: none;
+                padding: 0;
+                font-family: inherit;
                 display: flex;
                 align-items: center;
                 gap: 6px;
                 font-size: 11px;
-                color: #94a3b8;
+                color: var(--silver-mid);
                 cursor: pointer;
                 user-select: none;
             }
@@ -260,7 +270,7 @@
             }
 
             .toggle-container.checked .toggle-switch {
-                background: linear-gradient(135deg, #00f2fe 0%, #7f00ff 100%);
+                background: #20d68a;
             }
 
             .toggle-container.checked .toggle-switch::after {
@@ -279,7 +289,7 @@
             #precision-mode { appearance: none; color-scheme: dark; padding-right: 30px; font-weight: 500; }
             .selection-actions { display: flex; gap: 8px; margin-left: auto; }
             .button-icon { width: 14px; height: 14px; flex: none; }
-            .btn:focus-visible { outline: 2px solid #67e8f9; outline-offset: 2px; }
+            .btn:focus-visible, .toggle-container:focus-visible { outline: 2px solid var(--silver-light); outline-offset: 2px; }
             .impact-outline { border-color: #ffcf70; box-shadow: 0 0 0 1px rgba(255,207,112,.35); }
             .impact-outline .selected-outline-label { background: #ffcf70; color: #171717; }
             #impact-section[hidden] { display: none; }
@@ -292,7 +302,7 @@
             #impact-list span { flex: 0 0 auto; max-width: 55%; text-align: right; }
             #impact-notice { color: #ffcf70; margin: 6px 0 0; }
             #impact-refresh { font-weight: 500; }
-            .btn:disabled { opacity: .45; cursor: default; }
+            .btn:disabled, .toggle-container:disabled { opacity: .45; cursor: default; }
         `;
 
         const outlineLayer = document.createElement("div");
@@ -335,10 +345,10 @@
             <div class="action-row">
                 <div class="control-group">
                     <button class="btn btn-secondary btn-text" id="parent-btn" style="display: none;">Select Parent</button>
-                    <div class="toggle-container" id="preview-toggle" style="display: none;">
-                        <div class="toggle-switch"></div>
+                    <button type="button" class="toggle-container" id="preview-toggle" role="switch" aria-checked="false">
+                        <span class="toggle-switch" aria-hidden="true"></span>
                         <span>Preview Hide</span>
-                    </div>
+                    </button>
                 </div>
                 <div class="control-group">
                     <button class="btn btn-secondary" id="cancel-btn">Cancel</button>

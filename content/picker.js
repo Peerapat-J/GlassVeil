@@ -210,7 +210,7 @@
             }
 
             if (previewToggle) {
-                previewToggle.style.display = hasSelection ? "flex" : "none";
+                previewToggle.disabled = saveInFlight;
                 if (!hasSelection) {
                     restorePreview();
                 }
@@ -447,8 +447,9 @@
 
         const handleTogglePreview = (e) => {
             e.stopPropagation();
-            if (selection.size === 0 || saveInFlight) return;
-            shadowRoot.getElementById("preview-toggle").classList.toggle("checked");
+            if (saveInFlight) return;
+            const toggle = shadowRoot.getElementById("preview-toggle");
+            toggle.setAttribute("aria-checked", String(toggle.classList.toggle("checked")));
             updateSelectionControls();
         };
 
@@ -473,6 +474,7 @@
             const button = shadowRoot.getElementById("confirm-btn");
             shadowRoot.getElementById("undo-btn").disabled = true;
             shadowRoot.getElementById("impact-refresh").disabled = true;
+            shadowRoot.getElementById("preview-toggle").disabled = true;
             shadowRoot.getElementById("precision-mode").disabled = true;
             button.disabled = true; button.textContent = "Saving…";
             try {
@@ -483,6 +485,7 @@
                 if (shadowRoot) {
                     shadowRoot.getElementById("undo-btn").disabled = !selection.canUndo;
                     shadowRoot.getElementById("impact-refresh").disabled = false;
+                    shadowRoot.getElementById("preview-toggle").disabled = false;
                     shadowRoot.getElementById("precision-mode").disabled = false;
                     button.disabled = false; button.textContent = "Retry save";
                     shadowRoot.getElementById("impact-notice").textContent = "Could not save the rules. Please try again.";

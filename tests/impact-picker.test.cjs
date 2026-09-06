@@ -31,6 +31,32 @@ test('impact picker: previews every match, restores display priority, and clears
     assert.equal(first.style.display, ''); assert.equal(second.style.display, 'block');
     assert.equal(second.style.getPropertyPriority('display'), 'important');
 });
+test('impact picker: preview can be armed before selection and stays available after undo clears the list', t => {
+    const { first, second, shadow, click, picker } = setup(t, element => `#${element.id}`);
+    const toggle = () => shadow().querySelector('#preview-toggle');
+    assert.notEqual(toggle().style.display, 'none');
+    assert.equal(toggle().disabled, false);
+    click('preview-toggle');
+    assert.equal(toggle().getAttribute('aria-checked'), 'true');
+    assert.equal(first.style.display, '');
+    first.click();
+    assert.equal(first.style.display, 'none');
+    assert.equal(second.style.display, 'block');
+    click('undo-btn');
+    assert.equal(first.style.display, '');
+    assert.notEqual(toggle().style.display, 'none');
+    assert.equal(toggle().getAttribute('aria-checked'), 'true');
+    second.click();
+    assert.equal(second.style.display, 'none');
+    click('preview-toggle');
+    assert.equal(second.style.display, 'block');
+    assert.equal(second.style.getPropertyPriority('display'), 'important');
+    assert.equal(toggle().getAttribute('aria-checked'), 'false');
+    click('preview-toggle'); picker.stop();
+    assert.equal(second.style.display, 'block');
+    picker.start();
+    assert.equal(toggle().getAttribute('aria-checked'), 'false');
+});
 test('impact picker: declining broad confirmation leaves selections intact and saves nothing', async t => {
     const fixture = setup(t); fixture.first.click(); fixture.window.confirm = () => false;
     fixture.click('confirm-btn'); await settle();
@@ -131,11 +157,13 @@ test('picker undo: disabled during save, available after failure', async t => {
     fixture.first.click(); fixture.click('confirm-btn');
     assert.equal(fixture.shadow().querySelector('#undo-btn').disabled, true);
     assert.equal(fixture.shadow().querySelector('#impact-refresh').disabled, true);
+    assert.equal(fixture.shadow().querySelector('#preview-toggle').disabled, true);
     fixture.document.body.dispatchEvent(new fixture.window.KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }));
     assert.equal(fixture.shadow().querySelector('#selection-count').textContent, '1 selected');
     rejectSave(new Error('storage failed')); await settle();
     assert.equal(fixture.shadow().querySelector('#undo-btn').disabled, false);
     assert.equal(fixture.shadow().querySelector('#impact-refresh').disabled, false);
+    assert.equal(fixture.shadow().querySelector('#preview-toggle').disabled, false);
     fixture.click('undo-btn'); assert.equal(fixture.shadow().querySelector('#selection-count').textContent, '0 selected');
 });
 test('impact picker: new selections scroll to the bottom while refresh preserves the reading position', t => {
