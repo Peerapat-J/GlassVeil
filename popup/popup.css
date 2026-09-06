@@ -2,7 +2,6 @@
 
 :root {
     --bg-dark: #0d0e15;
-    --panel-bg: rgba(22, 24, 37, 0.7);
     --border-light: rgba(255, 255, 255, 0.08);
     --text-primary: #ffffff;
     --text-secondary: #94a3b8;
@@ -28,15 +27,8 @@ body {
     padding: 12px;
 }
 
-/* Glassmorphic Container */
-.glass-container {
-    background: var(--panel-bg);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--border-light);
-    border-radius: 16px;
-    padding: 16px;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+/* Layout only; Chrome supplies the outer popup frame. */
+.popup-layout {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -137,6 +129,7 @@ h1 span {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 12px;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--border-light);
     padding: 10px 10px;
@@ -147,8 +140,11 @@ h1 span {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    max-width: 200px;
+    flex: 1;
+    min-width: 0;
 }
+
+.site-control > .switch { flex: 0 0 44px; }
 
 .domain-details .label {
     font-size: 10px;
