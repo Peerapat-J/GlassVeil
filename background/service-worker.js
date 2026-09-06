@@ -10,13 +10,28 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
 });
 const tabAccess = globalThis.GlassVeilTabAccess.createTabAccess(chrome);
 
-chrome.runtime.onInstalled.addListener(() => {
-    chrome.contextMenus.create({
-        id: "glassveil-block-element",
-        title: "Block element on this page",
-        contexts: ["page", "image", "video", "link"],
-        documentUrlPatterns: ["http://*/*", "https://*/*"]
+const rebuildContextMenu = () => new Promise((resolve, reject) => {
+    chrome.contextMenus.removeAll(() => {
+        const removalError = chrome.runtime.lastError;
+        if (removalError) { reject(new Error(removalError.message)); return; }
+        chrome.contextMenus.create({
+            id: "glassveil-block-element",
+            title: "Block element on this page",
+            contexts: ["page", "image", "video", "link"],
+            documentUrlPatterns: ["http://*/*", "https://*/*"]
+        }, () => {
+            const creationError = chrome.runtime.lastError;
+            if (creationError) reject(new Error(creationError.message));
+            else resolve();
+        });
     });
+});
+let menuSetup = Promise.resolve();
+chrome.runtime.onInstalled.addListener(() => {
+    menuSetup = menuSetup.then(rebuildContextMenu).catch(error => {
+        console.warn("GlassVeil could not initialize its context menu:", error.message);
+    });
+    return menuSetup;
 });
 
 async function activatePickerOnTab(tab) {
