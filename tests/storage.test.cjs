@@ -123,3 +123,24 @@ test('storage: malformed versioned records remain intact when edits cannot safel
     await storage.appendSelectors('other.com', ['.safe']);
     assert.deepEqual(chrome.snapshot().ruleStore.rules['example.com'], before.ruleStore.rules['example.com']);
 });
+test('storage: site toggles reject damaged records without writes and leave other sites usable', async () => {
+    const good = { id: 'good', selector: '.good', enabled: true, createdAt: 0, sourceUrl: '', scope: 'hostname' };
+    for (const damaged of [[good, '.malformed'], null, { unexpected: true }]) {
+        for (const enabled of [true, false]) {
+            const { storage, chrome } = fixture({ ruleStore: { version: 1,
+                rules: { 'example.com': damaged, 'other.com': [good] },
+                disabledSites: enabled ? { 'example.com': true } : {} } });
+            const before = chrome.snapshot();
+            await assert.rejects(storage.setEnabled('example.com', enabled), /damaged/);
+            assert.equal(chrome.writes.length, 0);
+            assert.deepEqual(chrome.snapshot(), before);
+            await storage.setEnabled('other.com', false);
+            assert.equal((await storage.readSite('other.com')).enabled, false);
+            assert.deepEqual(chrome.snapshot().ruleStore.rules, before.ruleStore.rules);
+            await storage.setEnabled('empty.com', false);
+            assert.equal((await storage.readSite('empty.com')).enabled, false);
+            await storage.setEnabled('empty.com', true);
+            assert.equal((await storage.readSite('empty.com')).enabled, true);
+        }
+    }
+});

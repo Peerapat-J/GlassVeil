@@ -111,7 +111,9 @@
             resetSite: async hostname => { const store = await read(); setRules(store, hostname, []); await area.set({ ruleStore: store }); },
             setEnabled: async (hostname, enabled) => {
                 if (typeof enabled !== "boolean") throw new Error("Invalid site state.");
-                const store = await read(); store.disabledSites = { ...store.disabledSites, [hostname]: true };
+                const store = await read();
+                setRules(store, hostname, siteRules(store, hostname));
+                store.disabledSites = { ...store.disabledSites, [hostname]: true };
                 if (enabled) delete store.disabledSites[hostname];
                 await area.set({ ruleStore: store });
             }
