@@ -279,9 +279,7 @@ input:checked+.slider:before {
 
 h2 {
     font-size: 11px;
-    text-transform: uppercase;
     color: var(--text-secondary);
-    letter-spacing: 0.5px;
     font-weight: 600;
 }
 
