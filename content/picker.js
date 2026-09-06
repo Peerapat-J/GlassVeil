@@ -13,6 +13,7 @@
         let outlineUpdateFrame = null;
         const impactOutlineBoxes = new Map();
         let currentImpact = null;
+        let renderedSelection = new Set();
         let saveInFlight = false;
         let precision = "exact";
         const generateCurrentSelector = element => generateSelector(element, { mode: precision });
@@ -149,6 +150,8 @@
             if (currentImpact.skipped) summary.textContent += ` ${currentImpact.skipped} ${currentImpact.skipped === 1 ? "selection cannot" : "selections cannot"} be saved.`;
             summary.classList.toggle("warning", currentImpact.requiresConfirmation);
             const list = shadowRoot.getElementById("impact-list");
+            const hasNewSelection = Array.from(selection).some(element => !renderedSelection.has(element));
+            const previousScroll = list.scrollTop;
             list.replaceChildren();
             const errors = {
                 invalid: "Invalid selector — not saved",
@@ -166,6 +169,8 @@
                 row.className = entry.status !== "valid" || entry.matches.length > 1 ? "warning" : "";
                 row.append(code, count); list.appendChild(row);
             });
+            list.scrollTop = hasNewSelection ? list.scrollHeight : previousScroll;
+            renderedSelection = new Set(selection);
             shadowRoot.getElementById("impact-notice").textContent = "";
         };
 
@@ -219,6 +224,7 @@
             }
 
             shadowRoot.getElementById("undo-btn").disabled = saveInFlight || !selection.canUndo;
+            shadowRoot.getElementById("impact-refresh").disabled = saveInFlight || !hasSelection;
             syncSelectedOutlines();
             clampPickerPanelToViewport();
         };
@@ -303,6 +309,7 @@
             hoveredElement = null;
             selection.clear();
             currentImpact = null;
+            renderedSelection.clear();
         };
 
         // Mouse Move Highlight Handlers
@@ -465,6 +472,7 @@
             saveInFlight = true;
             const button = shadowRoot.getElementById("confirm-btn");
             shadowRoot.getElementById("undo-btn").disabled = true;
+            shadowRoot.getElementById("impact-refresh").disabled = true;
             shadowRoot.getElementById("precision-mode").disabled = true;
             button.disabled = true; button.textContent = "Saving…";
             try {
@@ -474,6 +482,7 @@
                 console.error("[GlassVeil] Error saving/applying rules:", err);
                 if (shadowRoot) {
                     shadowRoot.getElementById("undo-btn").disabled = !selection.canUndo;
+                    shadowRoot.getElementById("impact-refresh").disabled = false;
                     shadowRoot.getElementById("precision-mode").disabled = false;
                     button.disabled = false; button.textContent = "Retry save";
                     shadowRoot.getElementById("impact-notice").textContent = "Could not save the rules. Please try again.";

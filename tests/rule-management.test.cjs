@@ -101,7 +101,7 @@ test('popup: per-rule toggle/edit/test/delete preserve stable identity and metad
     assert.match(window.document.querySelector('#page-message').textContent, /invalid/);
     assert.equal((await storage(chrome).readSite('example.com')).rules[0].selector, '.edited');
     button('Test').click(); await settle(); assert.equal(closed, true); assert.ok(messages.some(message => message.action === 'testRule' && message.selector === '.edited'));
-    button('Delete').click(); await settle(); assert.equal((await storage(chrome).readSite('example.com')).rules.some(rule => rule.id === first.id), false);
+    row().querySelector('.btn-delete').click(); await settle(); assert.equal((await storage(chrome).readSite('example.com')).rules.some(rule => rule.id === first.id), false);
 });
 test('background storage router: rejects other senders and serializes all client operations', async () => {
     const chrome = createChrome(); chrome.runtime.onInstalled = event(); chrome.contextMenus = { create() {}, onClicked: event() }; chrome.commands = { onCommand: event() };

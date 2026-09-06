@@ -76,6 +76,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (!row) continue;
             const status = row.querySelector(".rule-status");
             status.textContent = item.status === "invalid" ? "Invalid selector" : `${item.count} ${item.count === 1 ? "match" : "matches"}`;
+            status.title = item.status === "invalid" ? "This rule has invalid CSS selector syntax." : `${item.count} ${item.count === 1 ? "element matches" : "elements match"} this rule on the current page.`;
             status.classList.toggle("invalid", item.status === "invalid");
         }
     };
@@ -90,6 +91,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const text = document.createElement("span"); text.className = "rule-text"; text.textContent = text.title = rule.selector;
             const enabled = document.createElement("input"); enabled.type = "checkbox"; enabled.checked = rule.enabled;
             enabled.className = "rule-enabled"; enabled.setAttribute("aria-label", `Enable rule ${rule.selector}`);
+            enabled.setAttribute("role", "switch");
             enabled.addEventListener("change", () => {
                 const value = enabled.checked;
                 runAction(async () => {
@@ -99,20 +101,24 @@ document.addEventListener("DOMContentLoaded", async () => {
                     await syncSite();
                 });
             });
-            const heading = document.createElement("div"); heading.className = "rule-heading"; heading.append(enabled, text);
+            const ruleSwitch = document.createElement("label"); ruleSwitch.className = "switch rule-switch";
+            const slider = document.createElement("span"); slider.className = "slider"; slider.setAttribute("aria-hidden", "true");
+            ruleSwitch.append(enabled, slider);
+            const heading = document.createElement("div"); heading.className = "rule-heading"; heading.append(ruleSwitch, text);
             const status = document.createElement("span"); status.className = "rule-status"; status.textContent = "Checking…";
-            const scope = document.createElement("span"); scope.className = "rule-scope"; scope.textContent = rule.enabled ? "This website" : "This website · Disabled";
             const actions = document.createElement("div"); actions.className = "rule-actions";
             const button = (label, callback, className = "btn-text") => {
                 const node = document.createElement("button"); node.className = className; node.textContent = label;
                 node.addEventListener("click", callback); actions.appendChild(node); return node;
             };
-            button("Test", () => runAction(async () => {
+            const testButton = button("Test", () => runAction(async () => {
                 const result = await tabAccess.send(currentTab, { action: "testRule", selector: rule.selector });
                 if (result.status === "invalid") { showNotice("This selector is invalid. Edit it before testing."); return; }
                 if (!result.count) { showNotice("This selector matches no elements on the current page."); return; }
                 window.close();
             }));
+            testButton.title = "Highlight matching elements for 5 seconds. Temporarily pauses all blocking in this tab without changing saved settings.";
+            testButton.setAttribute("aria-description", testButton.title);
             button("Edit", () => {
                 if (busy || li.querySelector("form")) return;
                 const form = document.createElement("form"), input = document.createElement("input");
@@ -131,12 +137,15 @@ document.addEventListener("DOMContentLoaded", async () => {
                     });
                 });
             });
-            button("Delete", () => runAction(async () => {
+            const deleteButton = button("Delete", () => runAction(async () => {
                 const result = await storage.deleteRule(currentDomain, rule.id);
                 offerRecovery(result.recovery, "Rule deleted");
                 await syncSite();
             }), "btn-delete");
-            li.append(heading, status, scope, actions); rulesList.appendChild(li);
+            deleteButton.setAttribute("aria-label", `Delete rule ${rule.selector}`);
+            deleteButton.title = "Delete rule";
+            deleteButton.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/></svg>';
+            li.append(heading, status, actions); rulesList.appendChild(li);
         });
         updateControls();
     };

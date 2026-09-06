@@ -79,7 +79,7 @@ Use the switch in the popup to enable or disable all GlassVeil rules for the cur
 
 ### Manage individual rules
 
-Each saved rule has its own checkbox, current-page match count, **Test**, **Edit**, and **Delete** actions. Unchecking a rule keeps it saved while stopping its effect. Invalid selectors are labeled, and **0 matches** means the rule does not match the current page.
+Each saved rule has a small enable/disable toggle, current-page match count, **Test**, **Edit**, and a trash icon. Turning a rule off keeps it saved while stopping its effect. The heading counts saved rules; each rule's match count tells you how many elements it matches on the current page. Invalid selectors are labeled, and **0 matches** means the rule does not match the current page.
 
 **Test** temporarily pauses GlassVeil blocking and draws amber outlines for five seconds. Click **Done** to finish early. Blocking then resumes using the latest settings. Elements hidden by the website's own CSS may have no visible outline.
 
@@ -87,7 +87,7 @@ Each saved rule has its own checkbox, current-page match count, **Test**, **Edit
 
 ### Delete a saved rule
 
-Open the popup and click **Delete** next to the saved selector.
+Open the popup and click the **trash icon** next to the saved selector.
 
 ### Reset all rules for a site
 

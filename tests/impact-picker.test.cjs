@@ -130,9 +130,31 @@ test('picker undo: disabled during save, available after failure', async t => {
     const fixture = setup(t, () => '#first', () => new Promise((resolve, reject) => { rejectSave = reject; }));
     fixture.first.click(); fixture.click('confirm-btn');
     assert.equal(fixture.shadow().querySelector('#undo-btn').disabled, true);
+    assert.equal(fixture.shadow().querySelector('#impact-refresh').disabled, true);
     fixture.document.body.dispatchEvent(new fixture.window.KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }));
     assert.equal(fixture.shadow().querySelector('#selection-count').textContent, '1 selected');
     rejectSave(new Error('storage failed')); await settle();
     assert.equal(fixture.shadow().querySelector('#undo-btn').disabled, false);
+    assert.equal(fixture.shadow().querySelector('#impact-refresh').disabled, false);
     fixture.click('undo-btn'); assert.equal(fixture.shadow().querySelector('#selection-count').textContent, '0 selected');
+});
+test('impact picker: new selections scroll to the bottom while refresh preserves the reading position', t => {
+    const fixture = setup(t, element => `#${element.id}`);
+    const list = fixture.shadow().querySelector('#impact-list');
+    // jsdom has no layout; provide a changing list height to exercise scroll intent.
+    Object.defineProperty(list, 'scrollHeight', { get: () => list.children.length * 30 });
+    fixture.first.click();
+    assert.equal(list.scrollTop, 30);
+    list.scrollTop = 5;
+    fixture.click('impact-refresh');
+    assert.equal(list.scrollTop, 5);
+    fixture.second.click();
+    assert.equal(list.scrollTop, 60);
+    list.scrollTop = 10;
+    fixture.second.click();
+    assert.equal(list.scrollTop, 10);
+    fixture.first.click();
+    assert.equal(fixture.shadow().querySelector('#impact-refresh').disabled, true);
+    fixture.first.click();
+    assert.equal(list.scrollTop, 30);
 });

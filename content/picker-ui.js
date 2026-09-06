@@ -178,6 +178,12 @@
             }
 
             .btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                font-family: inherit;
+                line-height: 16px;
                 padding: 8px 14px;
                 border-radius: 8px;
                 font-size: 12px;
@@ -263,24 +269,29 @@
         `;
 
         style.textContent += `
-            .picker-panel { width: 500px; max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; }
+            .picker-panel { width: 500px; max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
             .brand-icon { width: 28px; height: 28px; object-fit: contain; flex: 0 0 auto; }
             .drag-hint { white-space: nowrap; }
-            .precision-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-            .precision-control { display: flex; gap: 10px; align-items: center; color: #dce4ee; font-size: 12px; }
-            #precision-mode { background: #171d29; color: #e2e8f0; border: 1px solid #475569; border-radius: 6px; padding: 5px 8px; }
+            .precision-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+            .precision-control { display: flex; gap: 8px; align-items: center; color: #dce4ee; font-size: 12px; }
+            .precision-select { position: relative; }
+            .precision-select::after { content: ""; position: absolute; right: 12px; top: 12px; width: 6px; height: 6px; border-right: 1.5px solid #94a3b8; border-bottom: 1.5px solid #94a3b8; transform: rotate(45deg); pointer-events: none; }
+            #precision-mode { appearance: none; color-scheme: dark; padding-right: 30px; font-weight: 500; }
+            .selection-actions { display: flex; gap: 8px; margin-left: auto; }
+            .button-icon { width: 14px; height: 14px; flex: none; }
+            .btn:focus-visible { outline: 2px solid #67e8f9; outline-offset: 2px; }
             .impact-outline { border-color: #ffcf70; box-shadow: 0 0 0 1px rgba(255,207,112,.35); }
             .impact-outline .selected-outline-label { background: #ffcf70; color: #171717; }
             #impact-section[hidden] { display: none; }
             #impact-section { font: 12px/1.45 system-ui, sans-serif; color: #dce4ee; }
             #impact-summary { margin: 0 0 6px; }
             .warning { color: #ffcf70; }
-            #impact-list { list-style: none; padding: 0; margin: 0; max-height: 112px; overflow-y: auto; }
+            #impact-list { list-style: none; padding: 6px 10px; margin: 0; max-height: 128px; overflow-y: auto; border: 1px solid rgba(148,163,184,.3); border-radius: 8px; background: rgba(2,6,23,.25); scrollbar-width: thin; scrollbar-color: #475569 transparent; }
             #impact-list li { display: flex; gap: 12px; justify-content: space-between; padding: 3px 0; }
             #impact-list code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
             #impact-list span { flex: 0 0 auto; max-width: 55%; text-align: right; }
             #impact-notice { color: #ffcf70; margin: 6px 0 0; }
-            #impact-refresh { margin-top: 6px; }
+            #impact-refresh { font-weight: 500; }
             .btn:disabled { opacity: .45; cursor: default; }
         `;
 
@@ -303,12 +314,15 @@
             </div>
             <div class="precision-row">
                 <label class="precision-control" for="precision-mode">Select
-                    <select id="precision-mode">
+                    <span class="precision-select"><select class="btn btn-secondary" id="precision-mode">
                         <option value="exact">Exact element</option>
                         <option value="similar">Similar elements</option>
-                    </select>
+                    </select></span>
                 </label>
-                <button class="btn btn-secondary" id="undo-btn" disabled title="Undo selection (Cmd+Z / Ctrl+Z)" aria-keyshortcuts="Meta+Z Control+Z">Undo</button>
+                <div class="selection-actions">
+                    <button class="btn btn-secondary" id="undo-btn" disabled title="Undo last selection action (Cmd+Z / Ctrl+Z)" aria-keyshortcuts="Meta+Z Control+Z"><svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 14-5-5 5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Undo</button>
+                    <button class="btn btn-secondary" id="impact-refresh" disabled>Refresh matches</button>
+                </div>
             </div>
             <div class="selector-box">
                 <input type="text" class="selector-input" id="selector-display" readonly placeholder="Hover element to inspect..." />
@@ -316,7 +330,6 @@
             <section id="impact-section" hidden aria-label="Selector impact">
                 <p id="impact-summary" role="status" aria-live="polite"></p>
                 <ul id="impact-list"></ul>
-                <button class="btn btn-secondary btn-text" id="impact-refresh">Refresh matches</button>
                 <p id="impact-notice" role="status" aria-live="polite"></p>
             </section>
             <div class="action-row">
