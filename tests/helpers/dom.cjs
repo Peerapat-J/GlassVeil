@@ -51,7 +51,7 @@ function createChrome(initial = {}) {
     chrome.runtime.sendMessage = async message => {
         server ||= require('../../shared/storage.js').createStorage({ area: chrome.storage.local, changes });
         try { return { ok: true, value: await server[message.method](...message.args) }; }
-        catch (error) { return { ok: false, error: error.message }; }
+        catch (error) { return { ok: false, error: error.message, code: error.code }; }
     };
     return chrome;
 }

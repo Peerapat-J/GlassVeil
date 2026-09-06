@@ -5,7 +5,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     if (sender.id !== chrome.runtime.id || !globalThis.GlassVeilStorage.methods.includes(message.method) || !Array.isArray(message.args)) {
         respond({ ok: false, error: "Invalid storage request" }); return;
     }
-    ruleStorage[message.method](...message.args).then(value => respond({ ok: true, value }), error => respond({ ok: false, error: error.message }));
+    ruleStorage[message.method](...message.args).then(value => respond({ ok: true, value }), error => respond({ ok: false, error: error.message, code: error.code }));
     return true;
 });
 const tabAccess = globalThis.GlassVeilTabAccess.createTabAccess(chrome);

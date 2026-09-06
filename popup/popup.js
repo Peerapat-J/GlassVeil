@@ -7,6 +7,23 @@ document.addEventListener("DOMContentLoaded", async () => {
     const tabAccess = globalThis.GlassVeilTabAccess.createTabAccess(chrome);
     let siteRecords = [];
     let currentTab = null, currentDomain = "", supported = false, busy = false, retryAction = null;
+    let recovery = null, recoveryTimer = null;
+    const clearRecovery = (message = "") => {
+        window.clearTimeout(recoveryTimer); recoveryTimer = null; recovery = null;
+        get("recovery-notice").hidden = !message;
+        get("recovery-message").textContent = message;
+        get("undo-rule-action").hidden = true;
+    };
+    const offerRecovery = (snapshot, label) => {
+        clearRecovery();
+        if (!snapshot) return;
+        recovery = snapshot;
+        get("recovery-notice").hidden = false;
+        get("recovery-message").textContent = `${label}. Undo is available for 30 seconds while this popup stays open.`;
+        get("undo-rule-action").hidden = false;
+        recoveryTimer = window.setTimeout(() => clearRecovery("Undo expired."), Math.max(0, snapshot.expiresAt - Date.now()));
+    };
+    window.addEventListener("pagehide", () => clearRecovery());
 
     get("shortcut-settings-link").addEventListener("click", event => {
         event.preventDefault();
@@ -24,6 +41,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         pickBtn.disabled = toggle.disabled = clearBtn.disabled = busy || !supported;
         rulesList.querySelectorAll("button, input").forEach(button => { button.disabled = busy || !supported; });
         retryBtn.disabled = busy;
+        get("undo-rule-action").disabled = busy || !supported || !recovery;
         get("rules-section").hidden = !supported;
     };
     const showNotice = (message = "", retry = null, label = "Retry") => {
@@ -38,6 +56,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         badge.classList.toggle("disabled", !toggle.checked);
     };
     const showUnavailable = capability => {
+        clearRecovery();
         supported = false;
         currentDomain = "";
         toggle.checked = false;
@@ -76,6 +95,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 runAction(async () => {
                     try { await storage.updateRule(currentDomain, rule.id, { enabled: value }); }
                     catch (error) { enabled.checked = rule.enabled; throw error; }
+                    clearRecovery();
                     await syncSite();
                 });
             });
@@ -107,11 +127,15 @@ document.addEventListener("DOMContentLoaded", async () => {
                         const result = response.rules[0];
                         if (result.status === "invalid") { showNotice("This selector is invalid. Correct it before saving."); return; }
                         if (result.count > 1 && !window.confirm(`This rule matches ${result.count} elements. Save this selector?`)) return;
-                        await storage.updateRule(currentDomain, rule.id, { selector }); await syncSite();
+                        await storage.updateRule(currentDomain, rule.id, { selector }); clearRecovery(); await syncSite();
                     });
                 });
             });
-            button("Delete", () => runAction(async () => { await storage.deleteRule(currentDomain, rule.id); await syncSite(); }), "btn-delete");
+            button("Delete", () => runAction(async () => {
+                const result = await storage.deleteRule(currentDomain, rule.id);
+                offerRecovery(result.recovery, "Rule deleted");
+                await syncSite();
+            }), "btn-delete");
             li.append(heading, status, scope, actions); rulesList.appendChild(li);
         });
         updateControls();
@@ -164,6 +188,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             const capability = globalThis.GlassVeilTabAccess.classifyTab(tab);
             if (capability.status !== "supported") { showUnavailable(capability); return; }
+            if (currentDomain !== capability.hostname) clearRecovery();
             currentTab = tab; currentDomain = capability.hostname;
             await tabAccess.verify(currentTab);
             domainEl.textContent = currentDomain;
@@ -179,11 +204,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     pickBtn.addEventListener("click", () => runAction(startPicker, startPicker));
     toggle.addEventListener("change", () => {
         const enabled = toggle.checked;
-        runAction(async () => { await storage.setEnabled(currentDomain, enabled); await syncSite(); });
+        runAction(async () => { await storage.setEnabled(currentDomain, enabled); clearRecovery(); await syncSite(); });
     });
     clearBtn.addEventListener("click", () => {
-        if (!supported || busy || !window.confirm(`Are you sure you want to reset all rules for ${currentDomain}?`)) return;
-        runAction(async () => { await storage.resetSite(currentDomain); await syncSite(); });
+        runAction(async () => {
+            const result = await storage.resetSite(currentDomain);
+            offerRecovery(result.recovery, "Site rules reset");
+            await syncSite();
+        });
     });
+    get("undo-rule-action").addEventListener("click", () => runAction(async () => {
+        const snapshot = recovery;
+        if (!snapshot || Date.now() >= snapshot.expiresAt) { clearRecovery("Undo expired."); return; }
+        try { await storage.restoreRules(currentDomain, snapshot); }
+        catch (error) {
+            if (error.code === "RECOVERY_UNAVAILABLE") clearRecovery();
+            throw error;
+        }
+        clearRecovery("Rules restored.");
+        await syncSite();
+    }));
     await loadCurrentSite();
 });

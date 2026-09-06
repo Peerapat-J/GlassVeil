@@ -16,6 +16,7 @@ Instead of relying on a predefined filter list, GlassVeil provides a visual elem
 - Enable, disable, edit, test, and delete individual rules
 - Match counts and invalid-selector diagnostics in the popup
 - Reset saved rules for the current website
+- Undo a rule deletion or site reset within 30 seconds
 - Clear unsupported-page messages and retry for connection errors
 - Popup version and shortcut reflect the installed extension settings
 - Default keyboard shortcut:
@@ -91,6 +92,8 @@ Open the popup and click **Delete** next to the saved selector.
 ### Reset all rules for a site
 
 Click **Reset Site Rules** in the popup to remove all saved rules for the current domain.
+
+After deleting a rule or resetting a site, click **Undo** within 30 seconds while the popup stays open. It restores the original rules, order and enabled states. Another deletion replaces the previous Undo action; later changes to the same site prevent restoration so newer work stays intact. Closing the popup discards Undo. A failed restore can be retried before expiry.
 
 ### Use the keyboard shortcut
 

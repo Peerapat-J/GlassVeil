@@ -45,7 +45,7 @@ Tests use Node's test runner, jsdom and CSS.escape against local fixtures. `npm 
 
 The document selector engine does not pierce shadow roots. Disconnected, shadow-root, page-root and picker targets return no candidate. Exact mode returns only a selector that currently matches its target alone; this does not guarantee that a future website redesign preserves the selector.
 
-Production popup and content scripts route storage calls to a single service-worker queue, so migration and mutations do not race across those clients. This is serialization within the extension, not a transaction against manual DevTools changes or other software. Recovery after deleting/resetting persisted rules remains #20. Automated DOM checks do not simulate real layout or prove behavior on live websites.
+Production popup and content scripts route storage calls to a single service-worker queue, so migration and mutations do not race across those clients. This is serialization within the extension, not a transaction against manual DevTools changes or other software. Persisted delete/reset recovery uses the guarded snapshot API described below. Automated DOM checks do not simulate real layout or prove behavior on live websites.
 
 ## Browser checklist
 
@@ -96,7 +96,7 @@ The toolbar, popup and picker use the owner-selected artwork documented in `icon
 - Undo restores the latest available snapshot. Detached targets, targets moved to another document, and targets moved into a shadow root are filtered out; no-op history is skipped. Checking history also releases unavailable references. Reinserted targets are not resurrected from previously discarded entries.
 - The visible Undo button is disabled for empty history or while saving. Cmd+Z and Ctrl+Z use the same handler; Shift/Alt variants and composition are ignored. Input, textarea, select and contenteditable event paths keep their native behavior, including inside the picker shadow root. Escape still cancels.
 - Undo refreshes selector impact using the current precision mode and current DOM, restores outdated preview styles and redraws outlines. Preview Hide preference stays on for the session even when the selection becomes empty, so undoing the last deselection can restore its preview. Precision and preview toggles themselves are not history actions.
-- Cancel, successful save and stop clear all selection history. A failed save retains it for recovery. Undo does not change previously saved rules or mutate persisted rules; one-time migration may run at page initialization. Persisted-rule recovery remains #20.
+- Cancel, successful save and stop clear all selection history. A failed save retains it for recovery. Undo does not change previously saved rules or mutate persisted rules; one-time migration may run at page initialization. Persisted-rule recovery is a separate popup action described below.
 
 ### Undo manual checks
 
@@ -153,3 +153,23 @@ Test pauses cosmetic blocking in the active tab for five seconds and draws an am
 6. Delete a rule, repeat a stale request, and reset the site: no neighboring/unrelated site's rule should disappear. Restart and verify removed rules are not restored from legacy backup.
 7. Save a new picker selection: verify ID, enabled, creation time, source URL and hostname scope. Open two clients and save distinct rules concurrently; both should persist.
 8. In a disposable profile, simulate a write failure or future schema version: errors must remain visible and existing data must not be replaced. Export all local storage before testing the rollback procedure above.
+
+
+## Persisted rule recovery (#20)
+
+Delete and reset persist immediately and return a recovery receipt with the original rule records, resulting site state, hostname, revision and 30-second deadline. The receipt lives only in the calling popup session; no recovery snapshot is written to storage. Reset offers Undo without a confirmation dialog. A later deletion/reset replaces the popup's previous receipt. Closing the popup or navigating its controls to another site discards it.
+
+Every successful site mutation stores a fresh UUID in the optional `ruleStore.revisions[hostname]` map. `restoreRules` runs in the same worker queue as other writes, checks the deadline, revision, current site state and snapshot validity, then restores exact IDs, metadata, enabled flags and order. Restoration creates another revision, so a receipt works at most once. The persisted revision allows a still-open client to recover after worker suspension/restart. Migration schema version remains 1; revisions are additive metadata and legacy backups remain unchanged.
+
+Any later mutation to the same site invalidates the old receipt, including an edit followed by an edit back to the original value. Unrelated sites and no-op stale deletes do not invalidate it. The state comparison also rejects direct storage edits that change current rules or site enabled state without updating the revision. Manual writes that deliberately preserve both state and revision are outside the extension's serialized API guarantees.
+
+The popup removes Undo at expiry and after successful local edits/toggles. Cross-client conflicts are checked authoritatively on restoration and show an error without changing storage. Persistence failure retains the receipt for retry until its original deadline. Successful restore followed by a page-connection failure consumes Undo; Retry only reads and synchronizes current storage, never repeats a destructive write or restore. Storage events update other open pages through the existing content-script subscription.
+
+### Recovery manual checks
+
+1. Delete a rule in the middle of a list and Undo: verify original position, ID, selector, enabled flag, scope and creation metadata. Check other open tabs update.
+2. Reset a site: no confirmation dialog, rules disappear immediately, Undo restores the entire list. Site enabled state and other sites remain unchanged.
+3. Delete twice: Undo restores only the most recent deletion. Repeated clicks cannot apply the same receipt twice.
+4. Leave the popup open for 30 seconds: Undo expires. Close/reopen sooner: the old Undo action is gone.
+5. Delete, then edit/toggle/save a rule for the same site from another client: Undo must reject without replacing newer work. Repeat an edit and edit-back; it must still reject. Changes to a different site must not block Undo.
+6. Simulate a restoration write failure: the deletion stays saved and Undo can retry before expiry. Simulate a connection failure after a successful restore: Retry must only synchronize, without another write.

@@ -4,7 +4,8 @@
     const own = (value, key) => isRecord(value) && Object.hasOwn(value, key) ? value[key] : undefined;
     const mergeUniqueSelectors = (existing = [], incoming = []) => Array.from(new Set([...existing, ...incoming]
         .filter(value => typeof value === "string" && value.trim()).map(value => value.trim())));
-    const methods = ["readSite", "readAll", "appendSelectors", "deleteRule", "updateRule", "resetSite", "setEnabled"];
+    const recoveryDuration = 30000;
+    const methods = ["readSite", "readAll", "appendSelectors", "deleteRule", "updateRule", "resetSite", "setEnabled", "restoreRules"];
     const createStorage = ({ area, changes, request, uuid = () => globalThis.crypto.randomUUID(), now = () => Date.now() }) => {
         let queue = Promise.resolve();
         const subscribe = callback => {
@@ -15,7 +16,7 @@
         if (request) {
             return Object.freeze({ ...Object.fromEntries(methods.map(method => [method, async (...args) => {
                 const result = await request({ type: "glassveil-storage", method, args });
-                if (!result?.ok) throw new Error(result?.error || "Storage service unavailable");
+                if (!result?.ok) throw Object.assign(new Error(result?.error || "Storage service unavailable"), { code: result?.code });
                 return result.value;
             }])), subscribe });
         }
@@ -44,6 +45,7 @@
         const validate = store => {
             if (!isRecord(store) || store.version !== 1) throw new Error("Unsupported rule schema version. Data has not been changed.");
             if (!isRecord(store.rules) || !isRecord(store.disabledSites)) throw new Error("Rule storage is damaged. Restore a backup before editing.");
+            if (store.revisions !== undefined && !isRecord(store.revisions)) throw new Error("Rule revisions are damaged. Data has not been changed.");
             return store;
         };
         const read = async () => {
@@ -72,6 +74,19 @@
             store.rules = { ...store.rules, [hostname]: rules };
             if (!rules.length) delete store.rules[hostname];
         };
+        const persistSite = async (store, hostname) => {
+            store.revisions = { ...store.revisions, [hostname]: uuid() };
+            await area.set({ ruleStore: store });
+        };
+        const siteState = (store, hostname) => JSON.stringify({ rules: own(store.rules, hostname) ?? [], enabled: !own(store.disabledSites, hostname) });
+        const removeRules = async (store, hostname, rules) => {
+            const before = siteRules(store, hostname);
+            setRules(store, hostname, rules);
+            await persistSite(store, hostname);
+            return { ...site(store, hostname), recovery: { hostname, before, after: siteState(store, hostname),
+                revision: own(store.revisions, hostname), expiresAt: now() + recoveryDuration } };
+        };
+        const unavailable = message => Object.assign(new Error(message), { code: "RECOVERY_UNAVAILABLE" });
         const operations = {
             readAll: async () => read(),
             readSite: async hostname => site(await read(), hostname),
@@ -84,7 +99,7 @@
                     seen.add(selector); changed = true;
                     rules.push({ id: uuid(), selector, enabled: true, createdAt: now(), sourceUrl, scope: "hostname" });
                 }
-                if (changed) { setRules(store, hostname, rules); await area.set({ ruleStore: store }); }
+                if (changed) { setRules(store, hostname, rules); await persistSite(store, hostname); }
                 return site(store, hostname);
             },
             updateRule: async (hostname, id, patch) => {
@@ -100,22 +115,46 @@
                     if (typeof patch.enabled !== "boolean") throw new Error("Invalid enabled state.");
                     rule.enabled = patch.enabled;
                 }
-                setRules(store, hostname, rules); await area.set({ ruleStore: store });
+                setRules(store, hostname, rules); await persistSite(store, hostname);
                 return site(store, hostname);
             },
             deleteRule: async (hostname, id) => {
                 const store = await read(), rules = siteRules(store, hostname);
-                if (rules.some(rule => rule.id === id)) { setRules(store, hostname, rules.filter(rule => rule.id !== id)); await area.set({ ruleStore: store }); }
-                return site(store, hostname);
+                if (rules.some(rule => rule.id === id)) return removeRules(store, hostname, rules.filter(rule => rule.id !== id));
+                return { ...site(store, hostname), recovery: null };
             },
-            resetSite: async hostname => { const store = await read(); setRules(store, hostname, []); await area.set({ ruleStore: store }); },
+            resetSite: async hostname => {
+                const store = await read();
+                return removeRules(store, hostname, []);
+            },
             setEnabled: async (hostname, enabled) => {
                 if (typeof enabled !== "boolean") throw new Error("Invalid site state.");
                 const store = await read();
                 setRules(store, hostname, siteRules(store, hostname));
                 store.disabledSites = { ...store.disabledSites, [hostname]: true };
                 if (enabled) delete store.disabledSites[hostname];
-                await area.set({ ruleStore: store });
+                await persistSite(store, hostname);
+            },
+            restoreRules: async (hostname, recovery) => {
+                if (!isRecord(recovery) || recovery.hostname !== hostname || !Array.isArray(recovery.before) ||
+                    typeof recovery.revision !== "string" || !recovery.revision || !Number.isFinite(recovery.expiresAt)) {
+                    throw unavailable("This recovery action is invalid. Reload the controls.");
+                }
+                if (now() >= recovery.expiresAt) throw unavailable("Undo expired. The deleted rules cannot be restored from this popup.");
+                const store = await read();
+                if (now() >= recovery.expiresAt) throw unavailable("Undo expired. The deleted rules cannot be restored from this popup.");
+                if (own(store.revisions, hostname) !== recovery.revision || siteState(store, hostname) !== recovery.after) {
+                    throw unavailable("This site's rules or settings changed. Undo was cancelled to preserve newer changes.");
+                }
+                const snapshot = { rules: { [hostname]: recovery.before } };
+                if (siteRules(snapshot, hostname).length !== recovery.before.length ||
+                    new Set(recovery.before.map(rule => rule.id)).size !== recovery.before.length ||
+                    new Set(recovery.before.map(rule => rule.selector)).size !== recovery.before.length) {
+                    throw unavailable("This recovery snapshot is damaged. Data has not been changed.");
+                }
+                setRules(store, hostname, recovery.before);
+                await persistSite(store, hostname);
+                return site(store, hostname);
             }
         };
         return Object.freeze({ ...Object.fromEntries(methods.map(method => [method, (...args) => {
