@@ -67,6 +67,8 @@ Instead of relying on a predefined filter list, GlassVeil provides a visual elem
    - **Refresh matches** after the page changes
 7. Review each selector and the unique total. Amber outlines mark additional elements that would be hidden. Click **Block** to save; broad rules require another confirmation.
 
+Drag any non-interactive panel background to reposition the picker. Buttons, inputs, precision options and the scrollable match list keep their normal behavior.
+
 <img src="readmeAsset/previewHide.png" alt="GlassVeil Preview Hide control" width="420">
 
 The selectors are saved for the current domain and applied immediately.

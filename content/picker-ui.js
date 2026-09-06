@@ -11,6 +11,7 @@
             }
 
             .picker-panel {
+                cursor: grab;
                 --silver-light: #e8edf3;
                 --silver-mid: #9ca3af;
                 --silver-dark: #3b4250;
@@ -86,6 +87,7 @@
             }
 
             .picker-panel.dragging {
+                cursor: grabbing;
                 transition: none !important;
                 box-shadow: 0 16px 56px rgba(0, 0, 0, 0.7);
                 border-color: rgba(0, 242, 254, 0.25);
@@ -160,6 +162,7 @@
             }
 
             .selector-input {
+                cursor: text;
                 background: transparent;
                 border: none;
                 color: #e2e8f0;
@@ -296,7 +299,7 @@
             #impact-section { font: 12px/1.45 system-ui, sans-serif; color: #dce4ee; }
             #impact-summary { margin: 0 0 6px; }
             .warning { color: #ffcf70; }
-            #impact-list { list-style: none; padding: 6px 10px; margin: 0; max-height: 128px; overflow-y: auto; border: 1px solid rgba(148,163,184,.3); border-radius: 8px; background: rgba(2,6,23,.25); scrollbar-width: thin; scrollbar-color: #475569 transparent; }
+            #impact-list { cursor: auto; list-style: none; padding: 6px 10px; margin: 0; max-height: 128px; overflow-y: auto; border: 1px solid rgba(148,163,184,.3); border-radius: 8px; background: rgba(2,6,23,.25); scrollbar-width: thin; scrollbar-color: #475569 transparent; }
             #impact-list li { display: flex; gap: 12px; justify-content: space-between; padding: 3px 0; }
             #impact-list code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
             #impact-list span { flex: 0 0 auto; max-width: 55%; text-align: right; }
@@ -371,14 +374,14 @@
         }, 10);
 
         // ── Drag-to-move logic ──────────────────────────────────────────
-        const dragHandle = shadowRoot.getElementById("panel-drag-handle");
-        let isDragging = false;
+        const dragHandle = container;
+        let dragPointerId = null;
         let dragOffsetX = 0;
         let dragOffsetY = 0;
 
         const stopDragging = (e) => {
-            if (!isDragging) return;
-            isDragging = false;
+            if (dragPointerId === null || e.pointerId !== dragPointerId) return;
+            dragPointerId = null;
             container.classList.remove("dragging");
 
             if (e.pointerId !== undefined && dragHandle.hasPointerCapture(e.pointerId)) {
@@ -388,10 +391,11 @@
 
         dragHandle.addEventListener("pointerdown", (e) => {
             // Only drag on left-button mouse input, while still supporting touch/stylus.
-            if (e.pointerType === "mouse" && e.button !== 0) return;
-            if (e.target.closest("button, input, a")) return;
+            if (dragPointerId !== null || e.button !== 0) return;
+            // Keep controls, text editing and the scrollable match list usable.
+            if (e.target.closest('button, input, select, textarea, a, label, [contenteditable]:not([contenteditable="false"]), #impact-list')) return;
 
-            isDragging = true;
+            dragPointerId = e.pointerId;
 
             // Convert panel to free (top/left) positioning on first drag
             const rect = container.getBoundingClientRect();
@@ -408,7 +412,7 @@
         });
 
         dragHandle.addEventListener("pointermove", (e) => {
-            if (!isDragging) return;
+            if (dragPointerId === null || e.pointerId !== dragPointerId) return;
 
             const position = clampPanelPosition({
                 left: e.clientX - dragOffsetX,
