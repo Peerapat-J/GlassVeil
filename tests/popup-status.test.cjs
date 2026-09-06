@@ -16,7 +16,7 @@ async function fixture(t, { url = 'https://example.com/', tabId = 7, os = 'mac',
     chrome.commands = { getAll: async () => [{ name: 'toggle-picker', shortcut }] };
     chrome.tabs = { query: async () => [tab], get: async () => tab,
         create: async details => calls.created.push(details),
-        sendMessage: async (id, message) => { calls.messages.push(message); } };
+        sendMessage: async (id, message) => { calls.messages.push(message); return message.action === 'inspectRules' ? { rules: [] } : {}; } };
     chrome.scripting = { executeScript: async detail => calls.injections.push(detail), insertCSS: async () => {} };
     customize(chrome, tab, calls);
     window.chrome = chrome; window.confirm = () => true; window.close = () => { calls.closed = true; };
@@ -83,7 +83,7 @@ test('popup: failed tab query disables controls and Retry recovers', async t => 
     assert.equal(get('blocker-toggle').disabled, true); assert.equal(get('retry-action').hidden, false);
     fail = false; get('retry-action').click(); await settle();
     assert.equal(get('pick-element-btn').disabled, false); assert.equal(get('page-notice').hidden, true);
-    assert.equal(chrome.writes.length, 0); assert.equal(get('current-domain').textContent, new URL(tab.url).hostname);
+    assert.equal(chrome.writes.length, 1); assert.equal(get('current-domain').textContent, new URL(tab.url).hostname);
 });
 test('popup: injection failure is a visible retryable connection error, not unsupported', async t => {
     let fail = true;
@@ -100,19 +100,19 @@ test('popup: injection failure is a visible retryable connection error, not unsu
 test('popup: retry after persisted delete synchronizes without deleting the next rule', async t => {
     let fail = true;
     const { get, chrome, window } = await fixture(t, { customize: chrome => {
-        chrome.tabs.sendMessage = async () => { if (fail) throw new Error('no receiver'); };
+        chrome.tabs.sendMessage = async (id, message) => { if (fail) throw new Error('no receiver'); return message.action === 'inspectRules' ? { rules: [] } : {}; };
         chrome.scripting.executeScript = async () => { throw new Error('injection failed'); };
     } });
     window.document.querySelector('.btn-delete').click(); await settle();
-    assert.deepEqual(chrome.snapshot().rules['example.com'], ['.second']);
+    assert.deepEqual(chrome.snapshot().ruleStore.rules['example.com'].map(rule => rule.selector), ['.second']);
     fail = false; get('retry-action').click(); await settle();
-    assert.deepEqual(chrome.snapshot().rules['example.com'], ['.second']);
-    assert.equal(chrome.writes.length, 1); assert.equal(get('page-notice').hidden, true);
+    assert.deepEqual(chrome.snapshot().ruleStore.rules['example.com'].map(rule => rule.selector), ['.second']);
+    assert.equal(chrome.writes.length, 2); assert.equal(get('page-notice').hidden, true);
 });
 test('popup: navigation to a restricted page before an action prevents storage writes and injection', async t => {
     const { get, tab, chrome, calls } = await fixture(t);
     tab.url = 'chrome://settings'; get('blocker-toggle').click(); await settle();
-    assert.equal(chrome.writes.length, 0); assert.equal(calls.messages.length, 0);
+    assert.equal(chrome.writes.length, 1); assert.ok(calls.messages.every(message => message.action === 'inspectRules'));
     assert.equal(get('status-badge').textContent, 'Unsupported'); assert.equal(get('blocker-toggle').disabled, true);
 });
 test('tab access: never attempts unsupported injection and detects changed/inaccessible tabs', async () => {
@@ -141,9 +141,25 @@ test('popup: storage failure is visible and reload can recover without a write',
     } });
     assert.equal(get('pick-element-btn').disabled, true); assert.equal(get('page-notice').hidden, false);
     fail = false; get('retry-action').click(); await settle();
-    assert.equal(get('pick-element-btn').disabled, false); assert.equal(chrome.writes.length, 0);
+    assert.equal(get('pick-element-btn').disabled, false); assert.equal(chrome.writes.length, 1);
 });
 test('popup: reopening reads a changed binding instead of caching the old shortcut', async t => {
     assert.equal((await fixture(t, { os: 'win', shortcut: 'Ctrl+K' })).get('shortcut-hint').textContent, 'Ctrl + K');
     assert.equal((await fixture(t, { os: 'win', shortcut: 'Alt+J' })).get('shortcut-hint').textContent, 'Alt + J');
+});
+test('popup: failed rule toggle keeps the saved state and can retry the same change', async t => {
+    const { window, chrome, get } = await fixture(t);
+    const checkbox = () => window.document.querySelector('.rule-enabled');
+    const originalSet = chrome.storage.local.set;
+    chrome.storage.local.set = async () => { throw new Error('storage offline'); };
+    checkbox().click(); await settle();
+    assert.equal(chrome.snapshot().ruleStore.rules['example.com'][0].enabled, true);
+    assert.equal(checkbox().checked, true);
+    assert.match(get('page-message').textContent, /storage offline/);
+    assert.equal(checkbox().disabled, false);
+    chrome.storage.local.set = originalSet;
+    checkbox().click(); await settle();
+    assert.equal(chrome.snapshot().ruleStore.rules['example.com'][0].enabled, false);
+    assert.equal(checkbox().checked, false);
+    assert.equal(get('page-notice').hidden, true);
 });

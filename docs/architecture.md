@@ -7,10 +7,11 @@ GlassVeil loads directly as a Manifest V3 extension. There is no bundle or build
 | File | Responsibility |
 | --- | --- |
 | `content/content.js` | The only content-script entry point: creates instances, loads site state, connects storage changes and runtime messages. |
-| `shared/storage.js` | Shared popup/picker storage API, validation of the existing hostname-to-string-array schema, append/delete/reset/site-toggle operations and change subscription. Future schema migration belongs here. |
+| `shared/storage.js` | Versioned structured rule API, legacy migration, stable-ID mutations and worker-serialized access; subscribes to the authoritative ruleStore key. |
 | `content/selector-generator.js` | Selector generation with explicit document, Node, CSS.escape and temporary-class dependencies. Generates, validates and deterministically scores ID/attribute/class/ancestor/positional candidates for exact or similar selection. |
 | `content/selector-impact.js` | Evaluates each selection against the document, isolates invalid candidates, deduplicates matches, and compares reviewed element identities before save. |
-| `content/rule-engine.js` | Owns one style element, early attachment, applying/clearing CSS and isolation of invalid selectors. |
+| `content/rule-engine.js` | Applies enabled records, isolates invalid selectors, and suspends/resumes the latest rules during Test. |
+| `content/rule-diagnostics.js` | Current-document match counts and a timed, dismissible highlight preview. |
 | `content/picker-state.js` | Owns selection order, active element and session action-history snapshots; accepts an availability predicate, with no DOM listeners or Chrome APIs. |
 | `content/picker-utils.js` | Pure labels, position clamping and temporary-class classification. |
 | `content/picker-ui.js` | Shadow DOM panel markup/styles and pointer dragging; accepts callbacks instead of saving rules itself. |
@@ -25,8 +26,8 @@ Definition-only modules publish frozen factory APIs in the extension's isolated 
 
 ## Preserved behavior and narrow corrections
 
-- Storage remains `rules[hostname] = string[]` plus `disabledSites[hostname]`. Reads do not migrate, rewrite or remove stored data. Invalid records are skipped when reading; writes affect the requested site and retain other sites.
-- New selectors use the candidate policy below. Existing saved selector strings are not regenerated or migrated.
+- Storage now uses ruleStore version 1. Legacy rules/disabledSites keys remain unchanged as a rollback snapshot; migration and active mutations are owned by one service-worker queue.
+- New selectors use the candidate policy below. Migration preserves the selector text rather than regenerating it from the current page.
 - Rule application now parses selectors and CSS rules separately before joining valid CSS. A malformed selector or unterminated CSS comment cannot consume later valid rules. Empty/non-string entries are ignored and duplicate selectors produce one CSS rule.
 - Removing a disconnected active selection now falls back to the remaining selection rather than retaining a detached active element.
 - Preview hides the union of all valid selector matches and restores original inline display values and priorities. Cyan outlines identify selections; amber outlines show additional matches.
@@ -38,13 +39,13 @@ Tests use Node's test runner, jsdom and CSS.escape against local fixtures. `npm 
 | Area | Covered now | Future behavior |
 | --- | --- | --- |
 | Selectors | Stable/generated/duplicate IDs, stable/unstable/temporary classes, escaped characters, no ID/classes, mixed siblings, invalid ID candidate, disconnected elements and Shadow DOM limits. | Website-specific stability remains heuristic; shadow roots are unsupported. Exact/similar modes and candidate scoring are covered. |
-| Rules | Site enabled/disabled, invalid isolation, empty/malformed/duplicate/overlapping rules, zero matches, CSS apply/clear and early attachment/cleanup. | Per-rule enabled state and diagnostics in #12 after #17. |
-| Storage | Legacy string arrays, repeated read without migration, malformed input, duplicate append, exact hostname matching, delete/reset/toggle, preserved other-site data, change subscriptions and failed persistence. | Structured/versioned migration in #17; path/subdomain scope rules in #21. |
+| Rules | Site enabled/disabled, invalid isolation, empty/malformed/duplicate/overlapping rules, zero matches, CSS apply/clear and early attachment/cleanup. | Enabled records, invalid/zero-match diagnostics and temporary Test restoration are covered. |
+| Storage | Legacy string migration, idempotent/restarted reads, malformed input, duplicate append, exact hostname matching, delete/reset/toggle, preserved other-site data, change subscriptions and failed persistence. | Versioned migration, serialized writes and stable-ID edits are covered; page/subdomain scopes remain #21. |
 | Picker/loading | Selection order/active fallback, parent replacement, multi-select, preview/cancel, save, repeated initialization and complete fallback file order. | Undo history, parent/deselection restoration, disconnected-target filtering, keyboard/editable-field boundaries and preview cleanup are covered. |
 
 The document selector engine does not pierce shadow roots. Disconnected, shadow-root, page-root and picker targets return no candidate. Exact mode returns only a selector that currently matches its target alone; this does not guarantee that a future website redesign preserves the selector.
 
-The shared storage API still uses Chrome storage read/modify/write operations. It does not introduce cross-tab transactions or undo conflict recovery; these remain considerations for #17/#20. Automated DOM checks do not simulate real layout or prove behavior on live websites.
+Production popup and content scripts route storage calls to a single service-worker queue, so migration and mutations do not race across those clients. This is serialization within the extension, not a transaction against manual DevTools changes or other software. Recovery after deleting/resetting persisted rules remains #20. Automated DOM checks do not simulate real layout or prove behavior on live websites.
 
 ## Browser checklist
 
@@ -66,7 +67,7 @@ The shared storage API still uses Chrome storage read/modify/write operations. I
 - Invalid/empty selectors, zero matches, selectors that no longer match their selected target, and selectors covering the page/picker root cannot be saved. Other valid selections remain usable and the summary states how many selections will be skipped.
 - Counts refresh on selection/deselection, precision changes, parent selection, Preview Hide, Refresh matches, and immediately before saving. They are snapshots, not a continuous page observer. A change since the displayed snapshot requires another review; approval is also rechecked after the confirmation dialog. Equal counts with different element identities still invalidate the review.
 - Cancelling, saving, deselecting, undoing or refreshing a changed selector clears obsolete preview overlays through the same selection-control refresh path.
-- Saving errors keep the picker available for retry. Storage schema is unchanged.
+- Saving errors keep the picker available for retry. Persistence uses the shared structured rule API.
 
 The toolbar, popup and picker use the owner-selected artwork documented in `icons/source/README.md`.
 
@@ -95,7 +96,7 @@ The toolbar, popup and picker use the owner-selected artwork documented in `icon
 - Undo restores the latest available snapshot. Detached targets, targets moved to another document, and targets moved into a shadow root are filtered out; no-op history is skipped. Checking history also releases unavailable references. Reinserted targets are not resurrected from previously discarded entries.
 - The visible Undo button is disabled for empty history or while saving. Cmd+Z and Ctrl+Z use the same handler; Shift/Alt variants and composition are ignored. Input, textarea, select and contenteditable event paths keep their native behavior, including inside the picker shadow root. Escape still cancels.
 - Undo refreshes selector impact using the current precision mode and current DOM, restores outdated preview styles and redraws outlines. Preview Hide preference stays on for the session even when the selection becomes empty, so undoing the last deselection can restore its preview. Precision and preview toggles themselves are not history actions.
-- Cancel, successful save and stop clear all selection history. A failed save retains it for recovery. Undo does not change previously saved rules or write storage; persisted-rule recovery remains #20.
+- Cancel, successful save and stop clear all selection history. A failed save retains it for recovery. Undo does not change previously saved rules or mutate persisted rules; one-time migration may run at page initialization. Persisted-rule recovery remains #20.
 
 ### Undo manual checks
 
@@ -115,7 +116,7 @@ The toolbar, popup and picker use the owner-selected artwork documented in `icon
 - Browser APIs may omit protected tab URLs without an activeTab grant. Opening popup.html as an ordinary tab does not invoke the extension action. A missing URL therefore shows Unavailable rather than guessing a scheme; a provided restricted URL shows Unsupported. See the [activeTab access model](https://developer.chrome.com/docs/extensions/develop/concepts/activeTab). No new permissions are requested.
 - Site controls start disabled, stay disabled on unsupported/unavailable pages, and never write an empty hostname entry. Rules are hidden there; version, shortcut display and Edit Shortcut remain available. There is no Rule Manager yet (#2).
 - Before a site action, verify the tab still exists, has no pending navigation and retains its original URL. A changed page requires reloading controls. Failed communication on an eligible website attempts complete manifest-based JS/CSS injection once; failure shows a distinct connection error with Retry. URL eligibility cannot predict every browser policy or restricted document, so connection errors also explain that browser access may be restricted.
-- Retry for a persisted delete/reset/toggle only resynchronizes from current storage. It never replays the destructive operation. Storage errors offer Reload controls. This does not introduce storage transactions or change the legacy schema.
+- Retry for a persisted delete/reset/toggle only resynchronizes from current storage. It never replays the destructive operation. Storage errors offer Reload controls. Retry uses the shared structured storage API; no destructive operation is replayed.
 
 ### Popup manual checks
 
@@ -126,3 +127,29 @@ The toolbar, popup and picker use the owner-selected artwork documented in `icon
 5. Reload the extension while a website remains open, then start the picker to exercise complete fallback injection.
 6. Navigate the selected tab before acting on its popup: controls must refresh or disable before writing rules to an outdated site.
 7. Cause communication to fail after deleting one rule, then retry: the remaining rule must not be deleted. Repeat for reset and toggle; verify storage and current-page blocking agree.
+
+
+## Structured rules and migration (#17 / #12)
+
+The authoritative key is `ruleStore = { version: 1, rules: { [hostname]: Rule[] }, disabledSites, migration: { skipped, duplicates } }`. Each rule contains `id`, `selector`, `enabled`, `createdAt` (milliseconds), `sourceUrl`, and `scope: "hostname"`. New picker saves capture their page URL; migrated strings have an empty sourceUrl because the original page was not recorded. Editing preserves ID and creation metadata. Disabled records remain stored and are excluded from generated blocking CSS.
+
+All production calls use the runtime storage service in `background/service-worker.js`. It validates the extension sender/method, serializes reads that can migrate and all writes, and returns errors to the caller. Local factory execution is used by that service and DOM tests. Updates/deletes use stable IDs, never list positions; a stale delete cannot remove its next neighbor. Duplicate append does not re-enable an existing disabled rule. Duplicate edits reject.
+
+On the first successful read, legacy nonempty selector strings and compatible mixed records are normalized. Exact duplicate selector text after trimming keeps the first record and its enabled state/order. Existing valid IDs/creation metadata are preserved; duplicate IDs get new IDs. Unsupported scopes, malformed entries and empty selectors are skipped and counted; malformed CSS text is retained as a record so the user can diagnose/edit it. Migration happens once; repeated/restarted clients read the same IDs. Future schema versions and damaged envelopes reject without writes. Malformed records in an already-versioned site are skipped on read; rule mutations for that damaged site reject rather than silently erasing those records. Unrelated sites remain usable. No page/subdomain scope is introduced.
+
+The original `rules` and `disabledSites` keys remain untouched as the pre-migration rollback snapshot. Active edits, deletes, reset and toggles only affect ruleStore; restarting never resurrects the legacy rules. For rollback, first export **all** local extension storage from extension DevTools, then remove only ruleStore and reload the extension to migrate the original snapshot again. That returns to pre-migration rules and does not include later edits. Keep the full export if those edits need recovery. An older extension version reads the preserved legacy keys. No automatic rollback overwrites newer work.
+
+The popup reads current-page diagnostics via content messages. Invalid selectors are isolated from other rows and from CSS application; zero matches is distinct from invalid syntax. New selector edits are validated on the active page before persisting; multi-match edits require confirmation. Source data stays local. Counts are refreshed on opening and after mutations; reopening refreshes a page changed since the previous snapshot.
+
+Test pauses cosmetic blocking in the active tab for five seconds and draws an amber rectangle for each matched element with a visible box. Done, pagehide, another Test, picker activation or diagnostics refresh clears the preview. The engine keeps accepting newer rule/settings updates while suspended; cleanup reapplies the latest state. Original inline styles are not changed. Site CSS, closed shadow roots and non-rendered elements limit visible outlines. Other tabs keep their normal blocking.
+
+### Rule management manual checks
+
+1. Before upgrading a disposable profile, save legacy selectors for two hostnames, including a duplicate and invalid selector. Upgrade/reload: verify ordering, usable rules, invalid labels and skipped-entry reporting. Inspect local storage to confirm original keys are unchanged and ruleStore IDs survive another restart.
+2. Disable/re-enable one rule: its selector remains stored and other rules continue working. Verify every matching open tab updates and disabled state survives reload/restart.
+3. Verify each row reports its current match count, Invalid selector or 0 matches; errors in one rule must not stop valid rules.
+4. Test a hidden rule: matching elements are temporarily revealed and outlined, Done/timeout restores blocking. Change settings during the preview and verify the latest state wins on restoration.
+5. Edit a selector: invalid syntax must stay in the editor with an error, duplicate text must reject, multi-match edits require confirmation, and a valid edit must preserve ID/enabled/creation metadata while updating the page.
+6. Delete a rule, repeat a stale request, and reset the site: no neighboring/unrelated site's rule should disappear. Restart and verify removed rules are not restored from legacy backup.
+7. Save a new picker selection: verify ID, enabled, creation time, source URL and hostname scope. Open two clients and save distinct rules concurrently; both should persist.
+8. In a disposable profile, simulate a write failure or future schema version: errors must remain visible and existing data must not be replaced. Export all local storage before testing the rollback procedure above.
