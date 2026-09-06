@@ -301,6 +301,11 @@
             .warning { color: #ffcf70; }
             #impact-list { cursor: auto; list-style: none; padding: 6px 10px; margin: 0; max-height: 128px; overflow-y: auto; border: 1px solid rgba(148,163,184,.3); border-radius: 8px; background: rgba(2,6,23,.25); scrollbar-width: thin; scrollbar-color: #475569 transparent; }
             #impact-list li { display: flex; gap: 12px; justify-content: space-between; padding: 3px 0; }
+            #impact-list li { align-items: center; }
+            .remove-selection { flex: 0 0 22px; height: 22px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #9ca3af; font: 18px/1 system-ui, sans-serif; cursor: pointer; }
+            .remove-selection:hover { background: rgba(255,71,87,.12); color: #ff4757; }
+            .remove-selection:focus-visible { outline: 2px solid var(--silver-light); outline-offset: 1px; }
+            .remove-selection:disabled { opacity: .45; cursor: default; }
             #impact-list code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
             #impact-list span { flex: 0 0 auto; max-width: 55%; text-align: right; }
             #impact-notice { color: #ffcf70; margin: 6px 0 0; }

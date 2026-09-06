@@ -160,6 +160,7 @@
                 "page-root": "Includes the page or picker root — not saved"
             };
             currentImpact.entries.forEach((entry, index) => {
+                const element = Array.from(selection)[index];
                 const row = document.createElement("li");
                 const code = document.createElement("code");
                 code.textContent = `${index + 1}. ${entry.selector || "No selector"}`;
@@ -167,7 +168,23 @@
                 const count = document.createElement("span");
                 count.textContent = entry.status === "valid" ? `${entry.matches.length} ${entry.matches.length === 1 ? "match" : "matches"}` : errors[entry.status];
                 row.className = entry.status !== "valid" || entry.matches.length > 1 ? "warning" : "";
-                row.append(code, count); list.appendChild(row);
+                const remove = document.createElement("button");
+                remove.type = "button"; remove.className = "remove-selection"; remove.textContent = "×";
+                remove.title = "Remove selection";
+                remove.setAttribute("aria-label", `Remove selection ${index + 1}: ${entry.selector || "No selector"}`);
+                remove.disabled = saveInFlight;
+                remove.addEventListener("click", event => {
+                    event.stopPropagation();
+                    if (saveInFlight) return;
+                    selection.delete(element);
+                    element.classList.remove("glassveil-picker-hovered", "glassveil-picker-selected");
+                    if (hoveredElement === element) hoveredElement = null;
+                    restorePreviewForElement(element);
+                    updateSelectionControls();
+                    const remaining = list.querySelectorAll(".remove-selection");
+                    (remaining[Math.min(index, remaining.length - 1)] || shadowRoot.getElementById("undo-btn")).focus();
+                });
+                row.append(code, count, remove); list.appendChild(row);
             });
             list.scrollTop = hasNewSelection ? list.scrollHeight : previousScroll;
             renderedSelection = new Set(selection);
@@ -471,6 +488,7 @@
                 if (!sameImpact(reviewed, currentImpact)) { changed(); return; }
             }
             saveInFlight = true;
+            shadowRoot.querySelectorAll(".remove-selection").forEach(button => { button.disabled = true; });
             const button = shadowRoot.getElementById("confirm-btn");
             shadowRoot.getElementById("undo-btn").disabled = true;
             shadowRoot.getElementById("impact-refresh").disabled = true;
@@ -483,6 +501,7 @@
             } catch (err) {
                 console.error("[GlassVeil] Error saving/applying rules:", err);
                 if (shadowRoot) {
+                    shadowRoot.querySelectorAll(".remove-selection").forEach(button => { button.disabled = false; });
                     shadowRoot.getElementById("undo-btn").disabled = !selection.canUndo;
                     shadowRoot.getElementById("impact-refresh").disabled = false;
                     shadowRoot.getElementById("preview-toggle").disabled = false;

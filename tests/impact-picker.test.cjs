@@ -186,3 +186,17 @@ test('impact picker: new selections scroll to the bottom while refresh preserves
     fixture.first.click();
     assert.equal(list.scrollTop, 30);
 });
+
+test('impact picker: remove a middle selection directly and undo restores its original position', t => {
+    const fixture = setup(t, element => `#${element.id}`);
+    const third = fixture.document.querySelector('#keep');
+    fixture.first.click(); fixture.second.click(); third.click();
+    fixture.click('preview-toggle');
+    fixture.shadow().querySelectorAll('.remove-selection')[1].click();
+    const selectors = () => Array.from(fixture.shadow().querySelectorAll('#impact-list code'), code => code.textContent);
+    assert.deepEqual(selectors(), ['1. #first', '2. #keep']);
+    assert.equal(fixture.second.style.display, 'block');
+    fixture.click('undo-btn');
+    assert.deepEqual(selectors(), ['1. #first', '2. #second', '3. #keep']);
+    assert.equal(fixture.second.style.display, 'none');
+});
