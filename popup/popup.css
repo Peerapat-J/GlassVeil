@@ -119,7 +119,15 @@ h1 span {
     justify-content: center;
     width: 24px;
     height: 24px;
+    flex: 0 0 24px;
     border-radius: 6px;
+}
+
+.icon-button svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+    flex: none;
 }
 
 .icon-button:hover { background: rgba(148, 163, 184, 0.12); }
