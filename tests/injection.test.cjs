@@ -13,8 +13,8 @@ function injectionChrome() {
         create: async () => {},
         sendMessage: async (tabId, message) => {
             messages.push({ tabId, message });
-            if (message.action === 'inspectRules') return { rules: [] };
             if (messages.length === 1) throw new Error('No receiving content script');
+            if (message.action === 'inspectRules') return { rules: [] };
             return { status: 'picker_started' };
         }
     };
@@ -24,11 +24,11 @@ function injectionChrome() {
     };
     return { chrome, injections, messages, css };
 }
-function verify({ injections, messages, css }) {
+function verify({ injections, messages, css }, actions = ['startPicker', 'startPicker']) {
     assert.equal(injections.length, 1);
     assert.deepEqual(Array.from(injections[0].files), manifest.content_scripts[0].js);
     assert.equal(injections[0].target.tabId, 7);
-    assert.deepEqual(messages.map(entry => entry.message.action), ['startPicker', 'startPicker']);
+    assert.deepEqual(messages.map(entry => entry.message.action), actions);
     assert.deepEqual(Array.from(css[0].files), manifest.content_scripts[0].css);
 }
 test('popup fallback injects the complete manifest list in order, then retries', async t => {
@@ -37,7 +37,7 @@ test('popup fallback injects the complete manifest list in order, then retries',
     let closed = false; window.close = () => { closed = true; };
     load(window, ['shared/storage.js', 'shared/tab-access.js', 'popup/metadata.js', 'popup/popup.js']); await settle();
     window.document.querySelector('#pick-element-btn').click(); await settle();
-    verify(fixture); assert.equal(closed, true);
+    verify(fixture, ['inspectRules', 'inspectRules', 'startPicker']); assert.equal(closed, true);
 });
 test('background fallback injects the same complete manifest list for context-menu and shortcut activation', async () => {
     const fixture = injectionChrome();

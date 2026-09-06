@@ -50,8 +50,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         updateControls();
     };
     const refreshDiagnostics = async () => {
-        if (!siteRecords.length) return;
         const response = await tabAccess.send(currentTab, { action: "inspectRules", rules: siteRecords });
+        if (!siteRecords.length) return;
         for (const item of response.rules) {
             const row = Array.from(rulesList.children).find(row => row.dataset.ruleId === item.id);
             if (!row) continue;

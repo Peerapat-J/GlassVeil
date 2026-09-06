@@ -8,6 +8,35 @@ const { createStorage } = require('../shared/storage.js');
 const { createRuleEngine } = require('../content/rule-engine.js');
 const { createDiagnostics } = require('../content/rule-diagnostics.js');
 function storage(chrome) { return createStorage({ request: chrome.runtime.sendMessage, changes: chrome.storage.onChanged }); }
+for (const action of ['reopen', 'delete', 'reset']) {
+    test(`popup: empty inspection clears an active Test after final-rule ${action}`, async t => {
+        const chrome = createChrome({ rules: { 'example.com': ['.ad'] } });
+        const page = createDOM(t, '<div class="ad"></div>');
+        page.chrome = chrome; load(page); await settle();
+        const messages = [], tab = { id: 1, url: 'https://example.com/' };
+        const send = message => new Promise(resolve => chrome.runtime.onMessage.emit(message, {}, resolve));
+        chrome.tabs = { query: async () => [tab], get: async () => tab, sendMessage: async (id, message) => {
+            messages.push(message); return send(message);
+        } };
+        const startTest = async () => {
+            await send({ action: 'testRule', selector: '.ad' });
+            assert.ok(page.document.querySelector('glassveil-rule-preview'));
+        };
+        if (action === 'reopen') { await startTest(); await storage(chrome).resetSite('example.com'); }
+        const popup = createDOM(t, readFileSync(resolve(repo, 'popup/popup.html'), 'utf8'));
+        popup.chrome = chrome; popup.confirm = () => true;
+        load(popup, ['shared/storage.js', 'shared/tab-access.js', 'popup/metadata.js', 'popup/popup.js']); await settle();
+        if (action !== 'reopen') {
+            await startTest();
+            popup.document.querySelector(action === 'delete' ? '.btn-delete' : '#clear-all-btn').click();
+            await settle();
+        }
+        assert.equal(page.document.querySelector('glassveil-rule-preview'), null);
+        assert.ok(messages.some(message => message.action === 'inspectRules' && message.rules.length === 0));
+        assert.equal(popup.document.querySelectorAll('#rules-list li').length, 0);
+        assert.equal(page.document.querySelector('#glassveil-injected-style').textContent, '');
+    });
+}
 test('rules: disabled and invalid records remain stored while only enabled valid CSS applies', t => {
     const window = createDOM(t, '<div class="ad"></div><div class="off"></div>');
     const engine = createRuleEngine({ document: window.document, MutationObserver: window.MutationObserver });
