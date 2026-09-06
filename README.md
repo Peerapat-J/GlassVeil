@@ -100,7 +100,7 @@ Start the element picker with:
 - macOS: `Command + B`
 - Windows/Linux: `Ctrl + B`
 
-The popup shows the currently configured shortcut, or **Not set** if none is assigned. Change it through **Edit Shortcut** or `chrome://extensions/shortcuts`. The footer version comes from the installed extension manifest.
+The popup shows the currently configured shortcut, or **Not set** if none is assigned. Change it through the **gear button** beside the status badge or `chrome://extensions/shortcuts`. The version badge beside the app name comes from the installed extension manifest.
 
 ## Permissions
 
@@ -124,7 +124,7 @@ edge://
 about:
 ```
 
-The popup disables site controls on unsupported pages while keeping **Edit Shortcut** available. If a normal website cannot be reached, it shows a connection error with **Retry**; refresh the page first. Missing tab details can also be retried.
+The popup disables site controls on unsupported pages while keeping the **gear button** available. If a normal website cannot be reached, it shows a connection error with **Retry**; refresh the page first. Missing tab details can also be retried.
 
 Some websites frequently change their HTML structure or generated class names. In those cases, a previously saved selector may stop matching or may require adjustment.
 

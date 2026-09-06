@@ -45,6 +45,8 @@ body {
 /* Header */
 header {
     display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid var(--border-light);
@@ -95,6 +97,32 @@ h1 span {
     color: var(--danger-red);
     border: 1px solid rgba(255, 71, 87, 0.3);
 }
+
+.version-badge {
+    background: rgba(148, 163, 184, 0.12);
+    color: var(--text-secondary);
+    border-color: rgba(148, 163, 184, 0.3);
+    text-transform: none;
+    white-space: nowrap;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+}
+
+.header-actions .icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+}
+
+.icon-button:hover { background: rgba(148, 163, 184, 0.12); }
 
 /* Site Control Toggle */
 .site-control {
@@ -236,6 +264,15 @@ input:checked+.slider:before {
     gap: 8px;
 }
 
+.rules-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.rules-header #clear-all-btn { flex: none; margin-left: auto; }
+
 h2 {
     font-size: 11px;
     text-transform: uppercase;
@@ -339,20 +376,6 @@ h2 {
 .btn-delete:focus-visible {
     outline: 2px solid var(--accent-cyan);
     outline-offset: 2px;
-}
-
-/* Footer */
-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-top: 1px solid var(--border-light);
-    padding-top: 10px;
-    font-size: 11px;
-}
-
-.version {
-    color: var(--text-secondary);
 }
 
 .btn-text {

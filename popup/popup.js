@@ -28,7 +28,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     get("shortcut-settings-link").addEventListener("click", event => {
         event.preventDefault();
         chrome.tabs.create({ url: "chrome://extensions/shortcuts" }).catch(() => {
-            showNotice("Could not open shortcut settings. Try the Edit Shortcut link again.");
+            showNotice("Could not open shortcut settings. Try the shortcut settings button again.");
         });
     });
     get("extension-version").textContent = `v${chrome.runtime.getManifest().version}`;
