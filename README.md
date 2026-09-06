@@ -93,7 +93,7 @@ Open the popup and click the **trash icon** next to the saved selector.
 
 Click **Reset Site Rules** in the popup to remove all saved rules for the current domain.
 
-After deleting a rule or resetting a site, click **Undo** within 30 seconds while the popup stays open. It restores the original rules, order and enabled states. Another deletion replaces the previous Undo action; later changes to the same site prevent restoration so newer work stays intact. Closing the popup discards Undo. A failed restore can be retried before expiry.
+After deleting a rule or resetting a site, click **Undo** within 30 seconds while the popup stays open. It restores the original rules, order and enabled states. Another successful deletion or site reset replaces the previous Undo action; later changes to the same site prevent restoration so newer work stays intact. Closing the popup or navigating to another site in the popup discards Undo. A failed restore can be retried before expiry.
 
 ### Use the keyboard shortcut
 
