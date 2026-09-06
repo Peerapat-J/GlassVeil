@@ -165,6 +165,27 @@
                 const code = document.createElement("code");
                 code.textContent = `${index + 1}. ${entry.selector || "No selector"}`;
                 code.title = entry.selector;
+                code.tabIndex = 0;
+                let scrollPointer = null, scrollStart = 0, pointerStart = 0;
+                code.addEventListener("pointerdown", event => {
+                    if (event.button !== 0 || event.pointerType === "touch" || scrollPointer !== null || code.scrollWidth <= code.clientWidth) return;
+                    scrollPointer = event.pointerId; scrollStart = code.scrollLeft; pointerStart = event.clientX;
+                    code.setPointerCapture(event.pointerId); code.classList.add("scrolling");
+                    code.focus(); event.preventDefault(); event.stopPropagation();
+                });
+                code.addEventListener("pointermove", event => {
+                    if (scrollPointer === null || event.pointerId !== scrollPointer) return;
+                    code.scrollLeft = scrollStart + pointerStart - event.clientX;
+                    event.preventDefault(); event.stopPropagation();
+                });
+                const stopScroll = event => {
+                    if (event.pointerId !== scrollPointer) return;
+                    scrollPointer = null; code.classList.remove("scrolling");
+                    if (code.hasPointerCapture(event.pointerId)) code.releasePointerCapture(event.pointerId);
+                };
+                code.addEventListener("pointerup", stopScroll);
+                code.addEventListener("pointercancel", stopScroll);
+                code.addEventListener("lostpointercapture", stopScroll);
                 const count = document.createElement("span");
                 count.className = entry.status === "valid" ? "match-chip" : "match-error";
                 count.textContent = entry.status === "valid" ? `${entry.matches.length} ${entry.matches.length === 1 ? "match" : "matches"}` : errors[entry.status];

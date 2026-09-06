@@ -200,3 +200,23 @@ test('impact picker: remove a middle selection directly and undo restores its or
     assert.deepEqual(selectors(), ['1. #first', '2. #second', '3. #keep']);
     assert.equal(fixture.second.style.display, 'none');
 });
+
+test('impact picker: dragging long selector text scrolls only that row and stops on release', t => {
+    const fixture = setup(t); fixture.first.click();
+    const code = fixture.shadow().querySelector('#impact-list code');
+    Object.defineProperties(code, { scrollWidth: { value: 900 }, clientWidth: { value: 200 } });
+    let captured = false;
+    code.setPointerCapture = () => { captured = true; };
+    code.hasPointerCapture = () => captured;
+    code.releasePointerCapture = () => { captured = false; };
+    const pointer = (type, x) => {
+        const event = new fixture.window.Event(type, { bubbles: true, cancelable: true });
+        Object.assign(event, { pointerId: 1, pointerType: 'mouse', button: 0, clientX: x });
+        code.dispatchEvent(event);
+    };
+    pointer('pointerdown', 180); pointer('pointermove', 50);
+    assert.equal(code.scrollLeft, 130);
+    assert.equal(fixture.shadow().querySelector('.picker-panel').classList.contains('dragging'), false);
+    pointer('pointerup', 50); pointer('pointermove', 0);
+    assert.equal(code.scrollLeft, 130); assert.equal(captured, false);
+});
