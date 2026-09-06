@@ -308,6 +308,7 @@
             .remove-selection:disabled { opacity: .45; cursor: default; }
             #impact-list code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
             #impact-list span { flex: 0 0 auto; max-width: 55%; text-align: right; }
+            #impact-list .match-chip { padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(156,163,175,.3); background: rgba(156,163,175,.08); color: #9ca3af; font-size: 11px; white-space: nowrap; }
             #impact-notice { color: #ffcf70; margin: 6px 0 0; }
             #impact-refresh { font-weight: 500; }
             .btn:disabled, .toggle-container:disabled { opacity: .45; cursor: default; }

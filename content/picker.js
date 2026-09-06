@@ -166,6 +166,7 @@
                 code.textContent = `${index + 1}. ${entry.selector || "No selector"}`;
                 code.title = entry.selector;
                 const count = document.createElement("span");
+                count.className = entry.status === "valid" ? "match-chip" : "match-error";
                 count.textContent = entry.status === "valid" ? `${entry.matches.length} ${entry.matches.length === 1 ? "match" : "matches"}` : errors[entry.status];
                 row.className = entry.status !== "valid" || entry.matches.length > 1 ? "warning" : "";
                 const remove = document.createElement("button");
