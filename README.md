@@ -79,9 +79,7 @@ Use the switch in the popup to enable or disable all GlassVeil rules for the cur
 
 ### Manage individual rules
 
-Each saved rule has a small enable/disable toggle, current-page match count, **Test**, **Edit**, and a trash icon. Turning a rule off keeps it saved while stopping its effect. The heading counts saved rules; each rule's match count tells you how many elements it matches on the current page. Invalid selectors are labeled, and **0 matches** means the rule does not match the current page.
-
-**Test** temporarily pauses GlassVeil blocking and draws amber outlines for five seconds. Click **Done** to finish early. Blocking then resumes using the latest settings. Elements hidden by the website's own CSS may have no visible outline.
+Each saved rule has a small enable/disable toggle, with its current-page match count, **Edit**, and a trash icon on the next row. Turn a rule off and back on to compare its effect; it stays saved while disabled. The heading counts saved rules; each rule's match count tells you how many elements it matches on the current page. Invalid selectors are labeled, and **0 matches** means the rule does not match the current page.
 
 **Edit** validates the new selector before saving and asks for confirmation when it matches several elements. Existing rules upgrade automatically to records with stable IDs; the original legacy storage is retained as a local rollback snapshot. See [storage and migration details](docs/architecture.md#structured-rules-and-migration-17--12).
 

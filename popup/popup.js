@@ -107,18 +107,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             const heading = document.createElement("div"); heading.className = "rule-heading"; heading.append(ruleSwitch, text);
             const status = document.createElement("span"); status.className = "rule-status"; status.textContent = "Checking…";
             const actions = document.createElement("div"); actions.className = "rule-actions";
+            actions.appendChild(status);
             const button = (label, callback, className = "btn-text") => {
                 const node = document.createElement("button"); node.className = className; node.textContent = label;
                 node.addEventListener("click", callback); actions.appendChild(node); return node;
             };
-            const testButton = button("Test", () => runAction(async () => {
-                const result = await tabAccess.send(currentTab, { action: "testRule", selector: rule.selector });
-                if (result.status === "invalid") { showNotice("This selector is invalid. Edit it before testing."); return; }
-                if (!result.count) { showNotice("This selector matches no elements on the current page."); return; }
-                window.close();
-            }));
-            testButton.title = "Highlight matching elements for 5 seconds. Temporarily pauses all blocking in this tab without changing saved settings.";
-            testButton.setAttribute("aria-description", testButton.title);
             button("Edit", () => {
                 if (busy || li.querySelector("form")) return;
                 const form = document.createElement("form"), input = document.createElement("input");
@@ -145,7 +138,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             deleteButton.setAttribute("aria-label", `Delete rule ${rule.selector}`);
             deleteButton.title = "Delete rule";
             deleteButton.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/></svg>';
-            li.append(heading, status, actions); rulesList.appendChild(li);
+            li.append(heading, actions); rulesList.appendChild(li);
         });
         updateControls();
     };
