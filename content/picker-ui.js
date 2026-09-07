@@ -285,7 +285,8 @@
 
         style.textContent += `
             .picker-panel { width: 500px; max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-            .brand-icon { width: 28px; height: 28px; object-fit: contain; flex: 0 0 auto; }
+            .brand-icon-frame { width: 28px; height: 28px; flex: 0 0 auto; overflow: hidden; border-radius: 6px; }
+            .brand-icon { display: block; width: 100%; height: 100%; object-fit: contain; transform: scale(1.34); }
             .brand-veil { background: var(--gradient-silver); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
             .drag-hint { white-space: nowrap; }
             .precision-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
@@ -341,7 +342,7 @@
             <div class="drag-background" aria-hidden="true"></div>
             <div class="panel-header" id="panel-drag-handle">
                 <div class="title-area">
-                    <img class="brand-icon" alt="" />
+                    <span class="brand-icon-frame"><img class="brand-icon" alt="" /></span>
                     <h3>Glass<span class="brand-veil">Veil</span> Picker</h3>
                     <span class="selection-count" id="selection-count">0 selected</span>
                     <span class="drag-hint">drag to move</span>
