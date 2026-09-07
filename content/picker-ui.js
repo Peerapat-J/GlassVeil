@@ -146,9 +146,11 @@
                 white-space: nowrap;
             }
 
-            .instruction {
+            .instruction, #impact-summary {
                 font-size: 11px;
                 color: #94a3b8;
+                font-weight: 400;
+                line-height: normal;
             }
 
             .selector-box[hidden] { display: none; }
@@ -300,6 +302,7 @@
             #impact-section { font: 12px/1.45 system-ui, sans-serif; color: #dce4ee; }
             #impact-summary { margin: 0 0 6px; }
             .warning { color: #ffcf70; }
+            #impact-summary.warning { color: #ffcf70; }
             #impact-list { cursor: auto; list-style: none; padding: 6px 10px; margin: 0; max-height: 128px; overflow-y: auto; border: 1px solid rgba(148,163,184,.3); border-radius: 8px; background: rgba(2,6,23,.25); scrollbar-width: thin; scrollbar-color: #475569 transparent; }
             #impact-list li { display: flex; gap: 12px; justify-content: space-between; padding: 3px 0; }
             #impact-list li { align-items: center; }
