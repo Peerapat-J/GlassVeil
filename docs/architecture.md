@@ -63,7 +63,7 @@ Production popup and content scripts route storage calls to a single service-wor
 ## Selector impact policy (#15)
 
 - Each selection reports a match count; the total is the union of all valid matches. Duplicate selectors are saved once.
-- A selector matching more than one element, or a combined total of at least 10 elements, requires a separate confirmation.
+- Confirmation is required only when a selector matches elements outside all selected elements and their descendants. The number of selections alone does not require confirmation.
 - Invalid/empty selectors, zero matches, selectors that no longer match their selected target, and selectors covering the page/picker root cannot be saved. Other valid selections remain usable and the summary states how many selections will be skipped.
 - Counts refresh on selection/deselection, precision changes, parent selection, Preview Hide, Refresh matches, and immediately before saving. They are snapshots, not a continuous page observer. A change since the displayed snapshot requires another review; approval is also rechecked after the confirmation dialog. Equal counts with different element identities still invalidate the review.
 - Cancelling, saving, deselecting, undoing or refreshing a changed selector clears obsolete preview overlays through the same selection-control refresh path.
