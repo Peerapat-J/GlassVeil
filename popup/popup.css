@@ -276,11 +276,12 @@ input:checked+.slider:before {
 
 #pick-element-btn {
     margin-top: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 0;
 }
 
 /* Rules Section */
 .rules-section {
+    margin-top: 8px;
     display: flex;
     flex-direction: column;
     gap: 8px;
