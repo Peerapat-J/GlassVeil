@@ -106,7 +106,9 @@ peerapat.j@example.com
 
 | Version | Date | Changes | Status |
 |---------|------|---------|--------|
-| 1.0.0 | 2026-06-06 | Initial release of the visual cosmetic element-blocking workflow. | Draft |
+| 1.1.0   | 2026-09-07 | Major update with structured rule management, Undo recovery, improved selector accuracy and impact detection, redesigned popup and picker UX, persistent Preview Hide preferences, modularized architecture, expanded automated tests, CI validation, and refreshed extension icons. | Released |
+| 1.0.0 | 2026-06-06 | Initial release of the visual cosmetic element-blocking workflow. | Released |
+
 
 ## Review Notes
 

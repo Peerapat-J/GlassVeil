@@ -7,10 +7,18 @@ Instead of relying on a predefined filter list, GlassVeil provides a visual elem
 ## Features
 
 - Visual element picker for selecting one or more page elements
+- Undo picker selections with the Undo button or Cmd/Ctrl+Z
+- Exact element and Similar elements modes with stable selector candidates
+- Per-selector match counts, combined impact preview, and confirmation for broad rules
 - Cosmetic blocking using locally stored CSS selectors
 - Per-site blocking rules
 - Enable or disable blocking for the current site
-- View, delete, and reset saved rules from the popup
+- Enable, disable, edit, and delete individual rules; compare their effects with the rule toggle
+- Match counts and invalid-selector diagnostics in the popup
+- Reset saved rules for the current website
+- Undo a rule deletion or site reset within 30 seconds
+- Clear unsupported-page messages and retry for connection errors
+- Popup version and shortcut reflect the installed extension settings
 - Default keyboard shortcut:
   - macOS: `Cmd + B`
   - Windows/Linux: `Ctrl + B`
@@ -52,10 +60,14 @@ Instead of relying on a predefined filter list, GlassVeil provides a visual elem
 
 4. Hover over a page element to inspect it.
 5. Click one or more elements to select them. Click a selected element again to remove it from the current selection.
-6. Optionally use:
+6. Keep **Exact element** to target each selected element individually, or choose **Similar elements** to preview a shared rule. This choice applies to all current selections. Optionally use:
    - **Select Parent** to target a larger container
-   - **Preview Hide** to test the selected elements before saving
-7. Click **Block Selected**.
+   - **Undo** (Cmd+Z on macOS, Ctrl+Z on Windows/Linux) to reverse a selection, deselection, or Select Parent
+   - **Preview Hide** to test all matching elements before saving; available from the start. Your on/off choice is remembered across pages and picker sessions until you change it. Closing the picker still restores unsaved preview changes.
+   - **Refresh matches** after the page changes
+7. Review each selector and the unique total. Amber outlines mark additional elements that would be hidden. Click **Block** to save. Confirmation is required only for matches outside selected elements and their descendants; the warning states how many extra elements will be hidden. Selecting 10 or more elements alone does not trigger a warning.
+
+Drag any non-interactive panel background to reposition the picker. Buttons, inputs, precision options and the scrollable match list keep their normal behavior.
 
 <img src="readmeAsset/previewHide.png" alt="GlassVeil Preview Hide control" width="420">
 
@@ -67,13 +79,21 @@ The selectors are saved for the current domain and applied immediately.
 
 Use the switch in the popup to enable or disable all GlassVeil rules for the current website.
 
+### Manage individual rules
+
+Each saved rule has a small enable/disable toggle, with its current-page match count, **Edit**, and a trash icon on the next row. Turn a rule off and back on to compare its effect; it stays saved while disabled. The heading counts saved rules; each rule's match count tells you how many elements it matches on the current page. Invalid selectors are labeled, and **0 matches** means the rule does not match the current page.
+
+**Edit** validates the new selector before saving and asks for confirmation when it matches several elements. Existing rules upgrade automatically to records with stable IDs; the original legacy storage is retained as a local rollback snapshot. See [storage and migration details](docs/architecture.md#structured-rules-and-migration-17--12).
+
 ### Delete a saved rule
 
-Open the popup and click the delete icon next to the saved selector.
+Open the popup and click the **trash icon** next to the saved selector.
 
 ### Reset all rules for a site
 
 Click **Reset Site Rules** in the popup to remove all saved rules for the current domain.
+
+After deleting a rule or resetting a site, click **Undo** within 30 seconds while the popup stays open. It restores the original rules, order and enabled states. Another successful deletion or site reset replaces the previous Undo action; later changes to the same site prevent restoration so newer work stays intact. Closing the popup or navigating to another site in the popup discards Undo. A failed restore can be retried before expiry.
 
 ### Use the keyboard shortcut
 
@@ -82,7 +102,7 @@ Start the element picker with:
 - macOS: `Command + B`
 - Windows/Linux: `Ctrl + B`
 
-The shortcut can be changed at `chrome://extensions/shortcuts`.
+The popup shows the currently configured shortcut, or **Not set** if none is assigned. Change it through the **gear button** beside the status badge or `chrome://extensions/shortcuts`. The version badge beside the app name comes from the installed extension manifest.
 
 ## Permissions
 
@@ -106,6 +126,8 @@ edge://
 about:
 ```
 
+The popup disables site controls on unsupported pages while keeping the **gear button** available. If a normal website cannot be reached, it shows a connection error with **Retry**; refresh the page first. Missing tab details can also be retried.
+
 Some websites frequently change their HTML structure or generated class names. In those cases, a previously saved selector may stop matching or may require adjustment.
 
 ## Privacy
@@ -121,7 +143,32 @@ It does not require an account, does not send saved rules to a server, and does 
 - After a release, fast-forward `dev` to `main` when possible so release merge commits and documentation stay in sync. If both branches have new commits, review their differences and merge deliberately; do not force-push to synchronize them.
 - Before switching branches, check `git status` and preserve any unfinished local work.
 
-Before merging, run `npm test`, syntax-check `popup/popup.js` and `background/service-worker.js` with `node --check`, and run `git diff --check` against the PR base. The test command also syntax-checks `content/content.js`.
+### Automated validation
+
+Use Node.js 22 LTS, at least 22.22.2, as required by the DOM test environment. With nvm installed, run `nvm install` and `nvm use` from the repository root (`.nvmrc` selects the latest Node 22). Install the locked test dependencies with `npm ci --ignore-scripts`; no build step is needed to load the extension.
+
+Run the same checks as CI:
+
+```sh
+npm ci --ignore-scripts
+npm test
+npm run check:syntax
+npm run check:manifest
+git fetch origin
+git diff --check origin/dev...HEAD
+git diff --check
+git diff --cached --check
+```
+
+For a release PR, replace `origin/dev` with `origin/main`. The first diff checks committed PR changes; the other two check unstaged and staged changes locally.
+
+GitHub Actions runs these validations on every pull request and on pushes to `dev` or `main`, using a read-only repository token. PR checks run against the proposed merge, and whitespace checks compare it with the PR base. Push checks compare the previous and new commits (or the empty tree for a newly created branch).
+
+`npm test` includes the classic-script syntax gate and offline DOM tests. `check:syntax` compiles every `.js` file in `content`, `shared`, `popup`, and `background` as a classic script without executing it, so module-only syntax cannot slip through Node's module detection. `check:manifest` parses `manifest.json`. Add future linting, packaging, or browser checks as separate workflow steps with matching local commands.
+
+See [Architecture and test coverage](docs/architecture.md) for module ownership, loading order, and the current selector/storage limitations.
+
+### Browser validation
 
 For changes affecting extension behavior, reload the unpacked extension at `chrome://extensions`, refresh a test page, and check:
 

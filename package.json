@@ -1,9 +1,18 @@
 {
     "name": "glassveil-personal-element-blocker",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "private": true,
     "description": "GlassVeil - Personal Element Blocker",
     "scripts": {
-        "test": "node --check content/content.js && node --test"
+        "test": "npm run check:syntax && node --test tests/*.test.cjs",
+        "check:syntax": "node scripts/check-syntax.cjs",
+        "check:manifest": "node -e \"JSON.parse(require('node:fs').readFileSync('manifest.json', 'utf8'))\""
+    },
+    "devDependencies": {
+        "css.escape": "1.5.1",
+        "jsdom": "30.0.1"
+    },
+    "engines": {
+        "node": "^22.22.2 || ^24.15.0 || >=26.0.0"
     }
 }

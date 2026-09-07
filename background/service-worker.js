@@ -1,60 +1,61 @@
-// background/service-worker.js
+importScripts("../shared/tab-access.js", "../shared/storage.js");
+const ruleStorage = globalThis.GlassVeilStorage.createStorage({ area: chrome.storage.local, changes: chrome.storage.onChanged });
+chrome.runtime.onMessage.addListener((message, sender, respond) => {
+    if (message?.type !== "glassveil-storage") return;
+    if (sender.id !== chrome.runtime.id || !globalThis.GlassVeilStorage.methods.includes(message.method) || !Array.isArray(message.args)) {
+        respond({ ok: false, error: "Invalid storage request" }); return;
+    }
+    ruleStorage[message.method](...message.args).then(value => respond({ ok: true, value }), error => respond({ ok: false, error: error.message, code: error.code }));
+    return true;
+});
+const tabAccess = globalThis.GlassVeilTabAccess.createTabAccess(chrome);
 
-// Register context menu on installation
-chrome.runtime.onInstalled.addListener(() => {
-    chrome.contextMenus.create({
-        id: "glassveil-block-element",
-        title: "Block element on this page",
-        contexts: ["page", "image", "video", "link"]
+const rebuildContextMenu = () => new Promise((resolve, reject) => {
+    chrome.contextMenus.removeAll(() => {
+        const removalError = chrome.runtime.lastError;
+        if (removalError) { reject(new Error(removalError.message)); return; }
+        chrome.contextMenus.create({
+            id: "glassveil-block-element",
+            title: "Block element on this page",
+            contexts: ["page", "image", "video", "link"],
+            documentUrlPatterns: ["http://*/*", "https://*/*"]
+        }, () => {
+            const creationError = chrome.runtime.lastError;
+            if (creationError) reject(new Error(creationError.message));
+            else resolve();
+        });
     });
 });
+let menuSetup = Promise.resolve();
+const initializeContextMenu = () => {
+    menuSetup = menuSetup.then(rebuildContextMenu).catch(error => {
+        console.warn("GlassVeil could not initialize its context menu:", error.message);
+    });
+    return menuSetup;
+};
+chrome.runtime.onInstalled.addListener(initializeContextMenu);
+chrome.runtime.onStartup.addListener(initializeContextMenu);
 
-// Shared helper: activate picker on a given tab
 async function activatePickerOnTab(tab) {
-    if (!tab || !tab.id) return;
-
-    // Check if the URL is a supported scheme (we can't inject scripts on chrome://, edge://, etc.)
-    if (!tab.url || (!tab.url.startsWith("http://") && !tab.url.startsWith("https://"))) {
-        console.warn("GlassVeil cannot run on internal/restricted pages:", tab.url);
-        return;
-    }
-
+    const capability = globalThis.GlassVeilTabAccess.classifyTab(tab);
+    if (capability.status !== "supported") return capability;
     try {
-        // Send a message to start the picker
-        await chrome.tabs.sendMessage(tab.id, { action: "startPicker" });
-    } catch (err) {
-        console.log("Content script not detected. Attempting dynamic injection...");
-        try {
-            // Dynamically inject content scripts if not already present
-            await chrome.scripting.executeScript({
-                target: { tabId: tab.id },
-                files: ["content/content.js"]
-            });
-
-            await chrome.scripting.insertCSS({
-                target: { tabId: tab.id },
-                files: ["content/content.css"]
-            });
-
-            // Retry sending the message
-            await chrome.tabs.sendMessage(tab.id, { action: "startPicker" });
-        } catch (injectErr) {
-            console.error("Failed to dynamically inject GlassVeil script:", injectErr);
-        }
+        await tabAccess.send(tab, { action: "startPicker" });
+        return { status: "started" };
+    } catch (error) {
+        console.warn("GlassVeil picker unavailable:", error.message);
+        return { status: error.kind || "connection", message: error.message };
     }
 }
 
-// Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-    if (info.menuItemId === "glassveil-block-element") {
-        await activatePickerOnTab(tab);
-    }
+    if (info.menuItemId === "glassveil-block-element") await activatePickerOnTab(tab);
 });
 
-// Handle keyboard shortcut (Cmd+B on Mac, Ctrl+B on Windows/Linux)
-chrome.commands.onCommand.addListener(async (command) => {
-    if (command === "toggle-picker") {
+chrome.commands.onCommand.addListener(async command => {
+    if (command !== "toggle-picker") return;
+    try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         await activatePickerOnTab(tab);
-    }
+    } catch (error) { console.warn("GlassVeil could not read the active tab:", error.message); }
 });
