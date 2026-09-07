@@ -25,7 +25,7 @@
                 -webkit-backdrop-filter: blur(20px);
                 border: 1px solid rgba(255, 255, 255, 0.1);
                 border-radius: 16px;
-                padding: 16px 20px;
+                padding: 16px 20px 12px;
                 box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
                 display: flex;
                 flex-direction: column;
@@ -179,7 +179,7 @@
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                margin-top: 4px;
+                margin-top: 0;
             }
 
             .control-group {
@@ -315,6 +315,7 @@
             #impact-list span { flex: 0 0 auto; max-width: 55%; text-align: right; }
             #impact-list .match-chip { padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(156,163,175,.3); background: rgba(156,163,175,.08); color: #9ca3af; font-size: 11px; white-space: nowrap; }
             #impact-notice { color: #ffcf70; margin: 6px 0 0; }
+            #impact-notice:empty { display: none; }
             #preview-preference-notice { color: #ffcf70; margin: 0; font: 12px/1.45 system-ui, sans-serif; }
             #impact-refresh { font-weight: 500; }
             .btn:disabled, .toggle-container:disabled { opacity: .45; cursor: default; }
