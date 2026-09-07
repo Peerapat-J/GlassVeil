@@ -13,9 +13,10 @@ Instead of relying on a predefined filter list, GlassVeil provides a visual elem
 - Cosmetic blocking using locally stored CSS selectors
 - Per-site blocking rules
 - Enable or disable blocking for the current site
-- Enable, disable, edit, test, and delete individual rules
+- Enable, disable, edit, and delete individual rules; compare their effects with the rule toggle
 - Match counts and invalid-selector diagnostics in the popup
 - Reset saved rules for the current website
+- Undo a rule deletion or site reset within 30 seconds
 - Clear unsupported-page messages and retry for connection errors
 - Popup version and shortcut reflect the installed extension settings
 - Default keyboard shortcut:
@@ -62,9 +63,11 @@ Instead of relying on a predefined filter list, GlassVeil provides a visual elem
 6. Keep **Exact element** to target each selected element individually, or choose **Similar elements** to preview a shared rule. This choice applies to all current selections. Optionally use:
    - **Select Parent** to target a larger container
    - **Undo** (Cmd+Z on macOS, Ctrl+Z on Windows/Linux) to reverse a selection, deselection, or Select Parent
-   - **Preview Hide** to test all matching elements before saving
+   - **Preview Hide** to test all matching elements before saving; available from the start. Your on/off choice is remembered across pages and picker sessions until you change it. Closing the picker still restores unsaved preview changes.
    - **Refresh matches** after the page changes
-7. Review each selector and the unique total. Amber outlines mark additional elements that would be hidden. Click **Block** to save; broad rules require another confirmation.
+7. Review each selector and the unique total. Amber outlines mark additional elements that would be hidden. Click **Block** to save. Confirmation is required only for matches outside selected elements and their descendants; the warning states how many extra elements will be hidden. Selecting 10 or more elements alone does not trigger a warning.
+
+Drag any non-interactive panel background to reposition the picker. Buttons, inputs, precision options and the scrollable match list keep their normal behavior.
 
 <img src="readmeAsset/previewHide.png" alt="GlassVeil Preview Hide control" width="420">
 
@@ -78,19 +81,19 @@ Use the switch in the popup to enable or disable all GlassVeil rules for the cur
 
 ### Manage individual rules
 
-Each saved rule has its own checkbox, current-page match count, **Test**, **Edit**, and **Delete** actions. Unchecking a rule keeps it saved while stopping its effect. Invalid selectors are labeled, and **0 matches** means the rule does not match the current page.
-
-**Test** temporarily pauses GlassVeil blocking and draws amber outlines for five seconds. Click **Done** to finish early. Blocking then resumes using the latest settings. Elements hidden by the website's own CSS may have no visible outline.
+Each saved rule has a small enable/disable toggle, with its current-page match count, **Edit**, and a trash icon on the next row. Turn a rule off and back on to compare its effect; it stays saved while disabled. The heading counts saved rules; each rule's match count tells you how many elements it matches on the current page. Invalid selectors are labeled, and **0 matches** means the rule does not match the current page.
 
 **Edit** validates the new selector before saving and asks for confirmation when it matches several elements. Existing rules upgrade automatically to records with stable IDs; the original legacy storage is retained as a local rollback snapshot. See [storage and migration details](docs/architecture.md#structured-rules-and-migration-17--12).
 
 ### Delete a saved rule
 
-Open the popup and click **Delete** next to the saved selector.
+Open the popup and click the **trash icon** next to the saved selector.
 
 ### Reset all rules for a site
 
 Click **Reset Site Rules** in the popup to remove all saved rules for the current domain.
+
+After deleting a rule or resetting a site, click **Undo** within 30 seconds while the popup stays open. It restores the original rules, order and enabled states. Another successful deletion or site reset replaces the previous Undo action; later changes to the same site prevent restoration so newer work stays intact. Closing the popup or navigating to another site in the popup discards Undo. A failed restore can be retried before expiry.
 
 ### Use the keyboard shortcut
 
@@ -99,7 +102,7 @@ Start the element picker with:
 - macOS: `Command + B`
 - Windows/Linux: `Ctrl + B`
 
-The popup shows the currently configured shortcut, or **Not set** if none is assigned. Change it through **Edit Shortcut** or `chrome://extensions/shortcuts`. The footer version comes from the installed extension manifest.
+The popup shows the currently configured shortcut, or **Not set** if none is assigned. Change it through the **gear button** beside the status badge or `chrome://extensions/shortcuts`. The version badge beside the app name comes from the installed extension manifest.
 
 ## Permissions
 
@@ -123,7 +126,7 @@ edge://
 about:
 ```
 
-The popup disables site controls on unsupported pages while keeping **Edit Shortcut** available. If a normal website cannot be reached, it shows a connection error with **Retry**; refresh the page first. Missing tab details can also be retried.
+The popup disables site controls on unsupported pages while keeping the **gear button** available. If a normal website cannot be reached, it shows a connection error with **Retry**; refresh the page first. Missing tab details can also be retried.
 
 Some websites frequently change their HTML structure or generated class names. In those cases, a previously saved selector may stop matching or may require adjustment.
 

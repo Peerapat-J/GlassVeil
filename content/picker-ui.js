@@ -11,16 +11,21 @@
             }
 
             .picker-panel {
+                cursor: grab;
+                --silver-light: #e8edf3;
+                --silver-mid: #9ca3af;
+                --silver-dark: #3b4250;
+                --gradient-silver: linear-gradient(135deg, var(--silver-light) 0%, var(--silver-mid) 50%, var(--silver-dark) 100%);
                 position: fixed;
                 bottom: 24px;
                 left: 50%;
                 transform: translateX(-50%) translateY(100px);
-                background: rgba(13, 14, 21, 0.85);
+                background: rgba(13, 16, 19, 0.85);
                 backdrop-filter: blur(20px);
                 -webkit-backdrop-filter: blur(20px);
                 border: 1px solid rgba(255, 255, 255, 0.1);
                 border-radius: 16px;
-                padding: 16px 20px;
+                padding: 0;
                 box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
                 display: flex;
                 flex-direction: column;
@@ -82,6 +87,7 @@
             }
 
             .picker-panel.dragging {
+                cursor: grabbing;
                 transition: none !important;
                 box-shadow: 0 16px 56px rgba(0, 0, 0, 0.7);
                 border-color: rgba(0, 242, 254, 0.25);
@@ -93,7 +99,6 @@
                 align-items: center;
                 cursor: grab;
                 user-select: none;
-                touch-action: none;
                 gap: 16px;
             }
 
@@ -103,14 +108,14 @@
 
             .drag-hint {
                 font-size: 10px;
-                color: rgba(103, 232, 249, 0.8);
+                color: var(--silver-mid);
                 letter-spacing: 0.3px;
                 pointer-events: none;
                 margin-left: 6px;
-                border: 1px solid rgba(103, 232, 249, 0.2);
+                border: 1px solid rgba(156, 163, 175, 0.3);
                 border-radius: 999px;
                 padding: 3px 7px;
-                background: rgba(103, 232, 249, 0.08);
+                background: rgba(156, 163, 175, 0.08);
             }
 
             .title-area {
@@ -132,19 +137,22 @@
             .selection-count {
                 font-size: 11px;
                 font-weight: 700;
-                color: #67e8f9;
-                background: rgba(103, 232, 249, 0.1);
-                border: 1px solid rgba(103, 232, 249, 0.18);
+                color: var(--silver-mid);
+                background: rgba(156, 163, 175, 0.08);
+                border: 1px solid rgba(156, 163, 175, 0.3);
                 border-radius: 999px;
                 padding: 3px 8px;
                 white-space: nowrap;
             }
 
-            .instruction {
+            .instruction, #impact-summary {
                 font-size: 11px;
                 color: #94a3b8;
+                font-weight: 400;
+                line-height: normal;
             }
 
+            .selector-box[hidden] { display: none; }
             .selector-box {
                 display: flex;
                 background: rgba(255, 255, 255, 0.05);
@@ -156,6 +164,7 @@
             }
 
             .selector-input {
+                cursor: text;
                 background: transparent;
                 border: none;
                 color: #e2e8f0;
@@ -169,7 +178,7 @@
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                margin-top: 4px;
+                margin-top: 0;
             }
 
             .control-group {
@@ -178,6 +187,12 @@
             }
 
             .btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+                font-family: inherit;
+                line-height: 16px;
                 padding: 8px 14px;
                 border-radius: 8px;
                 font-size: 12px;
@@ -189,24 +204,26 @@
             }
 
             .btn-primary {
-                background: linear-gradient(135deg, #00f2fe 0%, #7f00ff 100%);
+                background: linear-gradient(100deg, transparent 0%, rgba(13, 17, 23, 0.70) 25%, rgba(13, 17, 23, 0.72) 72%, transparent 100%), var(--gradient-silver);
                 color: #ffffff;
-                box-shadow: 0 4px 10px rgba(0, 242, 254, 0.2);
+                border: 1px solid var(--silver-mid);
+                text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+                box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), inset 0 -1px 1px rgba(232, 237, 243, 0.35), 0 4px 15px rgba(232, 237, 243, 0.16);
             }
 
             .btn-primary:hover {
                 transform: translateY(-1px);
-                box-shadow: 0 6px 14px rgba(0, 242, 254, 0.3);
+                box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.9), inset 0 -1px 1px rgba(232, 237, 243, 0.45), 0 6px 20px rgba(232, 237, 243, 0.24);
             }
 
             .btn-secondary {
-                background: rgba(255, 255, 255, 0.08);
-                color: #e2e8f0;
-                border: 1px solid rgba(255, 255, 255, 0.05);
+                background: rgba(156, 163, 175, 0.08);
+                color: var(--silver-light);
+                border: 1px solid rgba(156, 163, 175, 0.24);
             }
 
             .btn-secondary:hover {
-                background: rgba(255, 255, 255, 0.15);
+                background: rgba(156, 163, 175, 0.15);
             }
 
             .btn-text {
@@ -223,11 +240,15 @@
 
             /* Toggle Styles */
             .toggle-container {
+                background: transparent;
+                border: none;
+                padding: 0;
+                font-family: inherit;
                 display: flex;
                 align-items: center;
                 gap: 6px;
                 font-size: 11px;
-                color: #94a3b8;
+                color: var(--silver-mid);
                 cursor: pointer;
                 user-select: none;
             }
@@ -254,7 +275,7 @@
             }
 
             .toggle-container.checked .toggle-switch {
-                background: linear-gradient(135deg, #00f2fe 0%, #7f00ff 100%);
+                background: #20d68a;
             }
 
             .toggle-container.checked .toggle-switch::after {
@@ -263,25 +284,51 @@
         `;
 
         style.textContent += `
-            .picker-panel { width: 500px; max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; }
-            .brand-icon { width: 28px; height: 28px; object-fit: contain; flex: 0 0 auto; }
+            .picker-panel { width: 500px; max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+            .brand-icon-frame { width: 28px; height: 28px; flex: 0 0 auto; overflow: hidden; border-radius: 6px; }
+            .brand-icon { display: block; width: 100%; height: 100%; object-fit: contain; transform: scale(1.34); }
+            .brand-veil { background: var(--gradient-silver); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
             .drag-hint { white-space: nowrap; }
-            .precision-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-            .precision-control { display: flex; gap: 10px; align-items: center; color: #dce4ee; font-size: 12px; }
-            #precision-mode { background: #171d29; color: #e2e8f0; border: 1px solid #475569; border-radius: 6px; padding: 5px 8px; }
+            .precision-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+            .precision-control { display: flex; gap: 8px; align-items: center; color: #dce4ee; font-size: 12px; }
+            .precision-select { position: relative; }
+            .precision-select::after { content: ""; position: absolute; right: 12px; top: 12px; width: 6px; height: 6px; border-right: 1.5px solid #94a3b8; border-bottom: 1.5px solid #94a3b8; transform: rotate(45deg); pointer-events: none; }
+            #precision-mode { appearance: none; color-scheme: dark; padding-right: 30px; font-weight: 500; }
+            .selection-actions { display: flex; gap: 8px; margin-left: auto; }
+            .button-icon { width: 14px; height: 14px; flex: none; }
+            .btn:focus-visible, .toggle-container:focus-visible { outline: 2px solid var(--silver-light); outline-offset: 2px; }
             .impact-outline { border-color: #ffcf70; box-shadow: 0 0 0 1px rgba(255,207,112,.35); }
             .impact-outline .selected-outline-label { background: #ffcf70; color: #171717; }
             #impact-section[hidden] { display: none; }
-            #impact-section { font: 12px/1.45 system-ui, sans-serif; color: #dce4ee; }
+            #impact-section { margin-top: -6px; font: 12px/1.45 system-ui, sans-serif; color: #dce4ee; }
             #impact-summary { margin: 0 0 6px; }
             .warning { color: #ffcf70; }
-            #impact-list { list-style: none; padding: 0; margin: 0; max-height: 112px; overflow-y: auto; }
+            #impact-summary.warning { color: #ffcf70; }
+            #impact-list { cursor: auto; list-style: none; padding: 6px 10px; margin: 0; max-height: 128px; overflow-y: auto; border: 1px solid rgba(148,163,184,.3); border-radius: 8px; background: rgba(2,6,23,.25); scrollbar-width: thin; scrollbar-color: #475569 transparent; }
             #impact-list li { display: flex; gap: 12px; justify-content: space-between; padding: 3px 0; }
-            #impact-list code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+            #impact-list li { align-items: center; }
+            .remove-selection { flex: 0 0 22px; height: 22px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: #9ca3af; font: 18px/1 system-ui, sans-serif; cursor: pointer; }
+            .remove-selection:hover { background: rgba(255,71,87,.12); color: #ff4757; }
+            .remove-selection:focus-visible { outline: 2px solid var(--silver-light); outline-offset: 1px; }
+            .remove-selection:disabled { opacity: .45; cursor: default; }
+            #impact-list code { overflow-x: auto; white-space: nowrap; flex: 1; min-width: 0; cursor: text; user-select: text; scrollbar-width: thin; }
+            #impact-list code:focus-visible { outline: 1px solid var(--silver-light); outline-offset: 1px; }
             #impact-list span { flex: 0 0 auto; max-width: 55%; text-align: right; }
+            #impact-list .match-chip { padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(156,163,175,.3); background: rgba(156,163,175,.08); color: #9ca3af; font-size: 11px; white-space: nowrap; }
             #impact-notice { color: #ffcf70; margin: 6px 0 0; }
-            #impact-refresh { margin-top: 6px; }
-            .btn:disabled { opacity: .45; cursor: default; }
+            #impact-notice:empty { display: none; }
+            #preview-preference-notice { color: #ffcf70; margin: 0; font: 12px/1.45 system-ui, sans-serif; }
+            #impact-refresh { font-weight: 500; }
+            .btn:disabled, .toggle-container:disabled { opacity: .45; cursor: default; }
+            /* A separate hit surface blocks native gestures only on draggable backgrounds.
+               Intentional UX: all non-control backgrounds drag the panel, including touch.
+               Native touch scrolling is reserved for controls and the match list; do not
+               restore header-only dragging or pan-y on this background surface.
+               Do not put touch-action:none on the panel: descendants cannot undo it. */
+            .picker-content { position: relative; flex: none; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 16px 20px 12px; }
+            .drag-background { position: absolute; inset: 0; border-radius: inherit; touch-action: none; }
+            .picker-content > :not(.drag-background) { position: relative; pointer-events: none; }
+            .picker-panel :is(button, input, select, textarea, a, label, [contenteditable]:not([contenteditable="false"]), #impact-list) { pointer-events: auto; }
         `;
 
         const outlineLayer = document.createElement("div");
@@ -292,10 +339,11 @@
         container.id = "glassveil-panel";
         container.className = "picker-panel";
         container.innerHTML = `
+            <div class="drag-background" aria-hidden="true"></div>
             <div class="panel-header" id="panel-drag-handle">
                 <div class="title-area">
-                    <img class="brand-icon" alt="" />
-                    <h3>GlassVeil Picker</h3>
+                    <span class="brand-icon-frame"><img class="brand-icon" alt="" /></span>
+                    <h3>Glass<span class="brand-veil">Veil</span> Picker</h3>
                     <span class="selection-count" id="selection-count">0 selected</span>
                     <span class="drag-hint">drag to move</span>
                 </div>
@@ -303,12 +351,15 @@
             </div>
             <div class="precision-row">
                 <label class="precision-control" for="precision-mode">Select
-                    <select id="precision-mode">
+                    <span class="precision-select"><select class="btn btn-secondary" id="precision-mode">
                         <option value="exact">Exact element</option>
                         <option value="similar">Similar elements</option>
-                    </select>
+                    </select></span>
                 </label>
-                <button class="btn btn-secondary" id="undo-btn" disabled title="Undo selection (Cmd+Z / Ctrl+Z)" aria-keyshortcuts="Meta+Z Control+Z">Undo</button>
+                <div class="selection-actions">
+                    <button class="btn btn-secondary" id="undo-btn" disabled title="Undo last selection action (Cmd+Z / Ctrl+Z)" aria-keyshortcuts="Meta+Z Control+Z"><svg class="button-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m9 14-5-5 5-5M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Undo</button>
+                    <button class="btn btn-secondary" id="impact-refresh" disabled>Refresh matches</button>
+                </div>
             </div>
             <div class="selector-box">
                 <input type="text" class="selector-input" id="selector-display" readonly placeholder="Hover element to inspect..." />
@@ -316,16 +367,15 @@
             <section id="impact-section" hidden aria-label="Selector impact">
                 <p id="impact-summary" role="status" aria-live="polite"></p>
                 <ul id="impact-list"></ul>
-                <button class="btn btn-secondary btn-text" id="impact-refresh">Refresh matches</button>
                 <p id="impact-notice" role="status" aria-live="polite"></p>
             </section>
             <div class="action-row">
                 <div class="control-group">
                     <button class="btn btn-secondary btn-text" id="parent-btn" style="display: none;">Select Parent</button>
-                    <div class="toggle-container" id="preview-toggle" style="display: none;">
-                        <div class="toggle-switch"></div>
+                    <button type="button" class="toggle-container" id="preview-toggle" role="switch" aria-checked="false">
+                        <span class="toggle-switch" aria-hidden="true"></span>
                         <span>Preview Hide</span>
-                    </div>
+                    </button>
                 </div>
                 <div class="control-group">
                     <button class="btn btn-secondary" id="cancel-btn">Cancel</button>
@@ -333,6 +383,15 @@
                 </div>
             </div>
         `;
+        const preferenceNotice = document.createElement("p");
+        preferenceNotice.id = "preview-preference-notice"; preferenceNotice.hidden = true;
+        preferenceNotice.setAttribute("role", "status"); container.appendChild(preferenceNotice);
+        // Size the hit surface against the entire scrollable content, not the
+        // panel's max-height viewport, so it still covers the bottom after scrolling.
+        const content = document.createElement("div");
+        content.className = "picker-content";
+        content.append(...container.childNodes);
+        container.appendChild(content);
         container.querySelector(".brand-icon").src = iconUrl;
         container.querySelector("#undo-btn").addEventListener("click", onUndo);
         container.querySelector("#precision-mode").addEventListener("change", event => onPrecisionChange(event.target.value));
@@ -348,14 +407,14 @@
         }, 10);
 
         // ── Drag-to-move logic ──────────────────────────────────────────
-        const dragHandle = shadowRoot.getElementById("panel-drag-handle");
-        let isDragging = false;
+        const dragHandle = container;
+        let dragPointerId = null;
         let dragOffsetX = 0;
         let dragOffsetY = 0;
 
         const stopDragging = (e) => {
-            if (!isDragging) return;
-            isDragging = false;
+            if (dragPointerId === null || e.pointerId !== dragPointerId) return;
+            dragPointerId = null;
             container.classList.remove("dragging");
 
             if (e.pointerId !== undefined && dragHandle.hasPointerCapture(e.pointerId)) {
@@ -365,10 +424,14 @@
 
         dragHandle.addEventListener("pointerdown", (e) => {
             // Only drag on left-button mouse input, while still supporting touch/stylus.
-            if (e.pointerType === "mouse" && e.button !== 0) return;
-            if (e.target.closest("button, input, a")) return;
+            if (dragPointerId !== null || e.button !== 0) return;
+            // Native scrollbar presses target the scroll container, including overlay
+            // scrollbars. Draggable backgrounds hit .drag-background instead.
+            if (e.target === container) return;
+            // Keep controls, text editing and the scrollable match list usable.
+            if (e.target.closest('button, input, select, textarea, a, label, [contenteditable]:not([contenteditable="false"]), #impact-list')) return;
 
-            isDragging = true;
+            dragPointerId = e.pointerId;
 
             // Convert panel to free (top/left) positioning on first drag
             const rect = container.getBoundingClientRect();
@@ -385,7 +448,7 @@
         });
 
         dragHandle.addEventListener("pointermove", (e) => {
-            if (!isDragging) return;
+            if (dragPointerId === null || e.pointerId !== dragPointerId) return;
 
             const position = clampPanelPosition({
                 left: e.clientX - dragOffsetX,

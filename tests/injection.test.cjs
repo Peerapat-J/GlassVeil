@@ -41,7 +41,7 @@ test('popup fallback injects the complete manifest list in order, then retries',
 });
 test('background fallback injects the same complete manifest list for context-menu and shortcut activation', async () => {
     const fixture = injectionChrome();
-    fixture.chrome.runtime.onInstalled = event();
+    fixture.chrome.runtime.onInstalled = event(); fixture.chrome.runtime.onStartup = event();
     fixture.chrome.contextMenus = { create() {}, onClicked: event() };
     fixture.chrome.commands = { onCommand: event() };
     const context = vm.createContext({ chrome: fixture.chrome, console, URL });

@@ -74,17 +74,15 @@ test('content: per-rule changes reach two open pages and disabled state survives
     await storage(chrome).updateRule('example.com', rule.id, { enabled: true }); await settle();
     for (const window of [first, second, reopened]) assert.match(window.document.querySelector('#glassveil-injected-style').textContent, /\.ad/);
 });
-test('popup: per-rule toggle/edit/test/delete preserve stable identity and metadata', async t => {
+test('popup: per-rule toggle/edit/delete preserve stable identity and metadata', async t => {
     const window = createDOM(t, readFileSync(resolve(repo, 'popup/popup.html'), 'utf8'));
     const chrome = createChrome({ rules: { 'example.com': ['.ad', '.off', '[', '.missing'] } });
-    const messages = [];
     const tab = { id: 1, url: 'https://example.com/' };
     chrome.tabs = { query: async () => [tab], get: async () => tab, create: async () => {}, sendMessage: async (id, message) => {
-        messages.push(message);
         if (message.action === 'inspectRules') return { rules: message.rules.map(rule => ({ id: rule.id, status: rule.selector === '[' ? 'invalid' : rule.selector === '.missing' ? 'zero' : 'valid', count: ['[', '.missing'].includes(rule.selector) ? 0 : 2 })) };
         return { status: 'valid', count: 2 };
     } };
-    window.chrome = chrome; window.confirm = () => true; let closed = false; window.close = () => { closed = true; };
+    window.chrome = chrome; window.confirm = () => true;
     load(window, ['shared/storage.js', 'shared/tab-access.js', 'popup/metadata.js', 'popup/popup.js']); await settle();
     const first = (await storage(chrome).readSite('example.com')).rules[0];
     const row = () => Array.from(window.document.querySelectorAll('#rules-list li')).find(row => row.dataset.ruleId === first.id);
@@ -100,11 +98,10 @@ test('popup: per-rule toggle/edit/test/delete preserve stable identity and metad
     row().querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })); await settle();
     assert.match(window.document.querySelector('#page-message').textContent, /invalid/);
     assert.equal((await storage(chrome).readSite('example.com')).rules[0].selector, '.edited');
-    button('Test').click(); await settle(); assert.equal(closed, true); assert.ok(messages.some(message => message.action === 'testRule' && message.selector === '.edited'));
-    button('Delete').click(); await settle(); assert.equal((await storage(chrome).readSite('example.com')).rules.some(rule => rule.id === first.id), false);
+    row().querySelector('.btn-delete').click(); await settle(); assert.equal((await storage(chrome).readSite('example.com')).rules.some(rule => rule.id === first.id), false);
 });
 test('background storage router: rejects other senders and serializes all client operations', async () => {
-    const chrome = createChrome(); chrome.runtime.onInstalled = event(); chrome.contextMenus = { create() {}, onClicked: event() }; chrome.commands = { onCommand: event() };
+    const chrome = createChrome(); chrome.runtime.onInstalled = event(); chrome.runtime.onStartup = event(); chrome.contextMenus = { create() {}, onClicked: event() }; chrome.commands = { onCommand: event() };
     const context = vm.createContext({ chrome, console, URL, crypto: globalThis.crypto });
     context.importScripts = (...files) => files.forEach(file => vm.runInContext(readFileSync(resolve(repo, 'background', file), 'utf8'), context));
     vm.runInContext(readFileSync(resolve(repo, 'background/service-worker.js'), 'utf8'), context);

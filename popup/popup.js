@@ -7,11 +7,36 @@ document.addEventListener("DOMContentLoaded", async () => {
     const tabAccess = globalThis.GlassVeilTabAccess.createTabAccess(chrome);
     let siteRecords = [];
     let currentTab = null, currentDomain = "", supported = false, busy = false, retryAction = null;
+    let recovery = null, recoveryTimer = null, recoveryCountdown = null;
+    const clearRecovery = (message = "") => {
+        window.clearTimeout(recoveryTimer); recoveryTimer = null; recovery = null;
+        window.clearInterval(recoveryCountdown); recoveryCountdown = null;
+        get("recovery-notice").hidden = !message;
+        get("recovery-message").textContent = message;
+        get("undo-rule-action").hidden = true;
+    };
+    const offerRecovery = (snapshot, label) => {
+        clearRecovery();
+        if (!snapshot) return;
+        recovery = snapshot;
+        get("recovery-notice").hidden = false;
+        const updateCountdown = () => {
+            const seconds = Math.max(0, Math.ceil((snapshot.expiresAt - Date.now()) / 1000));
+            if (!seconds) { clearRecovery("Undo expired."); return; }
+            get("recovery-message").textContent = `${label}. Undo is available for ${seconds} ${seconds === 1 ? "second" : "seconds"} while this popup stays open.`;
+        };
+        updateCountdown();
+        if (!recovery) return;
+        get("undo-rule-action").hidden = false;
+        recoveryTimer = window.setTimeout(() => clearRecovery("Undo expired."), Math.max(0, snapshot.expiresAt - Date.now()));
+        recoveryCountdown = window.setInterval(updateCountdown, 1000);
+    };
+    window.addEventListener("pagehide", () => clearRecovery());
 
     get("shortcut-settings-link").addEventListener("click", event => {
         event.preventDefault();
         chrome.tabs.create({ url: "chrome://extensions/shortcuts" }).catch(() => {
-            showNotice("Could not open shortcut settings. Try the Edit Shortcut link again.");
+            showNotice("Could not open shortcut settings. Try the shortcut settings button again.");
         });
     });
     get("extension-version").textContent = `v${chrome.runtime.getManifest().version}`;
@@ -24,6 +49,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         pickBtn.disabled = toggle.disabled = clearBtn.disabled = busy || !supported;
         rulesList.querySelectorAll("button, input").forEach(button => { button.disabled = busy || !supported; });
         retryBtn.disabled = busy;
+        get("undo-rule-action").disabled = busy || !supported || !recovery;
         get("rules-section").hidden = !supported;
     };
     const showNotice = (message = "", retry = null, label = "Retry") => {
@@ -38,8 +64,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         badge.classList.toggle("disabled", !toggle.checked);
     };
     const showUnavailable = capability => {
+        if (capability.status === "unsupported") {
+            clearRecovery();
+            currentDomain = "";
+        }
         supported = false;
-        currentDomain = "";
         toggle.checked = false;
         rulesList.replaceChildren(); get("rule-count").textContent = "0";
         clearBtn.style.display = "none";
@@ -57,6 +86,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (!row) continue;
             const status = row.querySelector(".rule-status");
             status.textContent = item.status === "invalid" ? "Invalid selector" : `${item.count} ${item.count === 1 ? "match" : "matches"}`;
+            status.title = item.status === "invalid" ? "This rule has invalid CSS selector syntax." : `${item.count} ${item.count === 1 ? "element matches" : "elements match"} this rule on the current page.`;
             status.classList.toggle("invalid", item.status === "invalid");
         }
     };
@@ -69,30 +99,30 @@ document.addEventListener("DOMContentLoaded", async () => {
         records.forEach(rule => {
             const li = document.createElement("li"); li.dataset.ruleId = rule.id;
             const text = document.createElement("span"); text.className = "rule-text"; text.textContent = text.title = rule.selector;
+            text.tabIndex = 0;
             const enabled = document.createElement("input"); enabled.type = "checkbox"; enabled.checked = rule.enabled;
             enabled.className = "rule-enabled"; enabled.setAttribute("aria-label", `Enable rule ${rule.selector}`);
+            enabled.setAttribute("role", "switch");
             enabled.addEventListener("change", () => {
                 const value = enabled.checked;
                 runAction(async () => {
                     try { await storage.updateRule(currentDomain, rule.id, { enabled: value }); }
                     catch (error) { enabled.checked = rule.enabled; throw error; }
+                    clearRecovery();
                     await syncSite();
                 });
             });
-            const heading = document.createElement("div"); heading.className = "rule-heading"; heading.append(enabled, text);
+            const ruleSwitch = document.createElement("label"); ruleSwitch.className = "switch rule-switch";
+            const slider = document.createElement("span"); slider.className = "slider"; slider.setAttribute("aria-hidden", "true");
+            ruleSwitch.append(enabled, slider);
+            const heading = document.createElement("div"); heading.className = "rule-heading"; heading.append(ruleSwitch, text);
             const status = document.createElement("span"); status.className = "rule-status"; status.textContent = "Checking…";
-            const scope = document.createElement("span"); scope.className = "rule-scope"; scope.textContent = rule.enabled ? "This website" : "This website · Disabled";
             const actions = document.createElement("div"); actions.className = "rule-actions";
+            actions.appendChild(status);
             const button = (label, callback, className = "btn-text") => {
                 const node = document.createElement("button"); node.className = className; node.textContent = label;
                 node.addEventListener("click", callback); actions.appendChild(node); return node;
             };
-            button("Test", () => runAction(async () => {
-                const result = await tabAccess.send(currentTab, { action: "testRule", selector: rule.selector });
-                if (result.status === "invalid") { showNotice("This selector is invalid. Edit it before testing."); return; }
-                if (!result.count) { showNotice("This selector matches no elements on the current page."); return; }
-                window.close();
-            }));
             button("Edit", () => {
                 if (busy || li.querySelector("form")) return;
                 const form = document.createElement("form"), input = document.createElement("input");
@@ -107,12 +137,19 @@ document.addEventListener("DOMContentLoaded", async () => {
                         const result = response.rules[0];
                         if (result.status === "invalid") { showNotice("This selector is invalid. Correct it before saving."); return; }
                         if (result.count > 1 && !window.confirm(`This rule matches ${result.count} elements. Save this selector?`)) return;
-                        await storage.updateRule(currentDomain, rule.id, { selector }); await syncSite();
+                        await storage.updateRule(currentDomain, rule.id, { selector }); clearRecovery(); await syncSite();
                     });
                 });
             });
-            button("Delete", () => runAction(async () => { await storage.deleteRule(currentDomain, rule.id); await syncSite(); }), "btn-delete");
-            li.append(heading, status, scope, actions); rulesList.appendChild(li);
+            const deleteButton = button("Delete", () => runAction(async () => {
+                const result = await storage.deleteRule(currentDomain, rule.id);
+                offerRecovery(result.recovery, "Rule deleted");
+                await syncSite();
+            }), "btn-delete");
+            deleteButton.setAttribute("aria-label", `Delete rule ${rule.selector}`);
+            deleteButton.title = "Delete rule";
+            deleteButton.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 6h18M9 6V4h6v2M5 6l1 14h12l1-14M10 10v6M14 10v6"/></svg>';
+            li.append(heading, actions); rulesList.appendChild(li);
         });
         updateControls();
     };
@@ -164,6 +201,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             const capability = globalThis.GlassVeilTabAccess.classifyTab(tab);
             if (capability.status !== "supported") { showUnavailable(capability); return; }
+            if (currentDomain !== capability.hostname) clearRecovery();
             currentTab = tab; currentDomain = capability.hostname;
             await tabAccess.verify(currentTab);
             domainEl.textContent = currentDomain;
@@ -179,11 +217,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     pickBtn.addEventListener("click", () => runAction(startPicker, startPicker));
     toggle.addEventListener("change", () => {
         const enabled = toggle.checked;
-        runAction(async () => { await storage.setEnabled(currentDomain, enabled); await syncSite(); });
+        runAction(async () => { await storage.setEnabled(currentDomain, enabled); clearRecovery(); await syncSite(); });
     });
     clearBtn.addEventListener("click", () => {
-        if (!supported || busy || !window.confirm(`Are you sure you want to reset all rules for ${currentDomain}?`)) return;
-        runAction(async () => { await storage.resetSite(currentDomain); await syncSite(); });
+        runAction(async () => {
+            const result = await storage.resetSite(currentDomain);
+            offerRecovery(result.recovery, "Site rules reset");
+            await syncSite();
+        });
     });
+    get("undo-rule-action").addEventListener("click", () => runAction(async () => {
+        const snapshot = recovery;
+        if (!snapshot || Date.now() >= snapshot.expiresAt) { clearRecovery("Undo expired."); return; }
+        try { await storage.restoreRules(currentDomain, snapshot); }
+        catch (error) {
+            if (error.code === "RECOVERY_UNAVAILABLE") clearRecovery();
+            throw error;
+        }
+        clearRecovery("Rules restored.");
+        await syncSite();
+    }));
     await loadCurrentSite();
 });

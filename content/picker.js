@@ -2,7 +2,8 @@
 (function (root) {
     "use strict";
 
-    const createPicker = ({ window, document, generateSelector, saveSelectors, utils, createSelectionState, createPickerUI, analyzeImpact, sameImpact, iconUrl }) => {
+    const createPicker = ({ window, document, generateSelector, saveSelectors, utils, createSelectionState, createPickerUI, analyzeImpact, sameImpact, iconUrl,
+        loadPreviewPreference = async () => null, savePreviewPreference = async () => {} }) => {
         const { formatSelectedOutlineLabel, clampPanelPosition, formatSelectionSummary } = utils;
         let isPickerActive = false;
         let hoveredElement = null;
@@ -13,8 +14,13 @@
         let outlineUpdateFrame = null;
         const impactOutlineBoxes = new Map();
         let currentImpact = null;
+        let renderedSelection = new Set();
         let saveInFlight = false;
         let precision = "exact";
+        let previewEnabled = false;
+        let previewRevision = 0;
+        let preferenceWrites = Promise.resolve();
+        let deferredPreviewPreference = null;
         const generateCurrentSelector = element => generateSelector(element, { mode: precision });
 
         // UI container references
@@ -23,6 +29,17 @@
         let pickerPanel = null;
 
         const getOutlineLayer = () => shadowRoot ? shadowRoot.getElementById("selected-outline-layer") : null;
+
+        const showPreferenceNotice = message => {
+            const notice = shadowRoot?.getElementById("preview-preference-notice");
+            if (notice) { notice.textContent = message; notice.hidden = !message; }
+        };
+
+        const syncPreviewToggle = () => {
+            const toggle = shadowRoot.getElementById("preview-toggle");
+            toggle.classList.toggle("checked", previewEnabled);
+            toggle.setAttribute("aria-checked", String(previewEnabled));
+        };
 
         const clearSelectedOutlines = () => {
             selectedOutlineBoxes.forEach((outlineBox) => outlineBox.remove());
@@ -65,7 +82,7 @@
 
         const syncSelectedOutlines = () => {
             renderOutlines(selection, selectedOutlineBoxes, "selected-outline", formatSelectedOutlineLabel);
-            const additional = Array.from(currentImpact?.matches || []).filter(element => !selection.has(element));
+            const additional = Array.from(currentImpact?.additionalMatches || []);
             renderOutlines(additional, impactOutlineBoxes, "selected-outline impact-outline", () => "Also hidden");
         };
 
@@ -145,10 +162,13 @@
             const section = shadowRoot.getElementById("impact-section");
             section.hidden = selection.size === 0;
             const summary = shadowRoot.getElementById("impact-summary");
-            summary.textContent = `${currentImpact.requiresConfirmation ? "Warning: " : ""}These rules will hide ${currentImpact.total} ${currentImpact.total === 1 ? "element" : "elements"} in total.`;
+            summary.textContent = `These rules will hide ${currentImpact.total} ${currentImpact.total === 1 ? "element" : "elements"} in total.`;
+            if (currentImpact.requiresConfirmation) summary.textContent += ` This will also hide ${currentImpact.additionalMatches.size} ${currentImpact.additionalMatches.size === 1 ? "element" : "elements"} you did not select.`;
             if (currentImpact.skipped) summary.textContent += ` ${currentImpact.skipped} ${currentImpact.skipped === 1 ? "selection cannot" : "selections cannot"} be saved.`;
             summary.classList.toggle("warning", currentImpact.requiresConfirmation);
             const list = shadowRoot.getElementById("impact-list");
+            const hasNewSelection = Array.from(selection).some(element => !renderedSelection.has(element));
+            const previousScroll = list.scrollTop;
             list.replaceChildren();
             const errors = {
                 invalid: "Invalid selector — not saved",
@@ -157,15 +177,36 @@
                 "page-root": "Includes the page or picker root — not saved"
             };
             currentImpact.entries.forEach((entry, index) => {
+                const element = Array.from(selection)[index];
                 const row = document.createElement("li");
                 const code = document.createElement("code");
                 code.textContent = `${index + 1}. ${entry.selector || "No selector"}`;
                 code.title = entry.selector;
+                code.tabIndex = 0;
                 const count = document.createElement("span");
+                count.className = entry.status === "valid" ? "match-chip" : "match-error";
                 count.textContent = entry.status === "valid" ? `${entry.matches.length} ${entry.matches.length === 1 ? "match" : "matches"}` : errors[entry.status];
-                row.className = entry.status !== "valid" || entry.matches.length > 1 ? "warning" : "";
-                row.append(code, count); list.appendChild(row);
+                row.className = entry.status !== "valid" || entry.matches.some(match => currentImpact.additionalMatches.has(match)) ? "warning" : "";
+                const remove = document.createElement("button");
+                remove.type = "button"; remove.className = "remove-selection"; remove.textContent = "×";
+                remove.title = "Remove selection";
+                remove.setAttribute("aria-label", `Remove selection ${index + 1}: ${entry.selector || "No selector"}`);
+                remove.disabled = saveInFlight;
+                remove.addEventListener("click", event => {
+                    event.stopPropagation();
+                    if (saveInFlight) return;
+                    selection.delete(element);
+                    element.classList.remove("glassveil-picker-hovered", "glassveil-picker-selected");
+                    if (hoveredElement === element) hoveredElement = null;
+                    restorePreviewForElement(element);
+                    updateSelectionControls();
+                    const remaining = list.querySelectorAll(".remove-selection");
+                    (remaining[Math.min(index, remaining.length - 1)] || shadowRoot.getElementById("undo-btn")).focus();
+                });
+                row.append(code, count, remove); list.appendChild(row);
             });
+            list.scrollTop = hasNewSelection ? list.scrollHeight : previousScroll;
+            renderedSelection = new Set(selection);
             shadowRoot.getElementById("impact-notice").textContent = "";
         };
 
@@ -197,6 +238,7 @@
             }
 
             if (displayInput) {
+                displayInput.parentElement.hidden = hasSelection;
                 displayInput.value = formatSelectionSummary(selectedCount, activeSelector);
             }
 
@@ -205,7 +247,7 @@
             }
 
             if (previewToggle) {
-                previewToggle.style.display = hasSelection ? "flex" : "none";
+                previewToggle.disabled = saveInFlight;
                 if (!hasSelection) {
                     restorePreview();
                 }
@@ -219,6 +261,7 @@
             }
 
             shadowRoot.getElementById("undo-btn").disabled = saveInFlight || !selection.canUndo;
+            shadowRoot.getElementById("impact-refresh").disabled = saveInFlight || !hasSelection;
             syncSelectedOutlines();
             clampPickerPanelToViewport();
         };
@@ -259,7 +302,22 @@
                 onTogglePreview: handleTogglePreview
             });
 
+            syncPreviewToggle();
             updateSelectionControls();
+            const session = shadowRoot, revision = previewRevision;
+            preferenceWrites.then(loadPreviewPreference).then(enabled => {
+                if (shadowRoot !== session || revision !== previewRevision) return;
+                if (typeof enabled !== "boolean") return;
+                const apply = () => {
+                    if (shadowRoot !== session || revision !== previewRevision) return;
+                    previewEnabled = enabled;
+                    syncPreviewToggle(); updateSelectionControls();
+                };
+                if (saveInFlight) deferredPreviewPreference = apply;
+                else apply();
+            }).catch(() => {
+                if (shadowRoot === session && revision === previewRevision) showPreferenceNotice("Could not load the saved Preview Hide setting. You can still change it here.");
+            });
 
             // Event listeners
             document.addEventListener("mouseover", handleMouseOver, true);
@@ -303,6 +361,7 @@
             hoveredElement = null;
             selection.clear();
             currentImpact = null;
+            renderedSelection.clear();
         };
 
         // Mouse Move Highlight Handlers
@@ -440,9 +499,14 @@
 
         const handleTogglePreview = (e) => {
             e.stopPropagation();
-            if (selection.size === 0 || saveInFlight) return;
-            shadowRoot.getElementById("preview-toggle").classList.toggle("checked");
+            if (saveInFlight) return;
+            previewEnabled = !previewEnabled;
+            const enabled = previewEnabled, revision = ++previewRevision, session = shadowRoot;
+            syncPreviewToggle(); showPreferenceNotice("");
             updateSelectionControls();
+            preferenceWrites = preferenceWrites.then(() => savePreviewPreference(enabled)).catch(() => {
+                if (shadowRoot === session && previewRevision === revision) showPreferenceNotice("Could not save Preview Hide for next time. Toggle it again to retry.");
+            });
         };
 
         const handleConfirmBlock = async (e) => {
@@ -457,14 +521,17 @@
             };
             if (!sameImpact(previous, reviewed)) { changed(); return; }
             if (reviewed.requiresConfirmation) {
-                const accepted = window.confirm(`These rules will hide ${reviewed.total} elements. Broad rules may hide content you did not select. Save these rules?`);
+                const accepted = window.confirm(`These rules will also hide ${reviewed.additionalMatches.size} ${reviewed.additionalMatches.size === 1 ? "element" : "elements"} you did not select. Save these rules?`);
                 if (!accepted) return;
                 updateSelectionControls();
                 if (!sameImpact(reviewed, currentImpact)) { changed(); return; }
             }
             saveInFlight = true;
+            shadowRoot.querySelectorAll(".remove-selection").forEach(button => { button.disabled = true; });
             const button = shadowRoot.getElementById("confirm-btn");
             shadowRoot.getElementById("undo-btn").disabled = true;
+            shadowRoot.getElementById("impact-refresh").disabled = true;
+            shadowRoot.getElementById("preview-toggle").disabled = true;
             shadowRoot.getElementById("precision-mode").disabled = true;
             button.disabled = true; button.textContent = "Saving…";
             try {
@@ -473,13 +540,25 @@
             } catch (err) {
                 console.error("[GlassVeil] Error saving/applying rules:", err);
                 if (shadowRoot) {
+                    shadowRoot.querySelectorAll(".remove-selection").forEach(button => { button.disabled = false; });
                     shadowRoot.getElementById("undo-btn").disabled = !selection.canUndo;
+                    shadowRoot.getElementById("impact-refresh").disabled = false;
+                    shadowRoot.getElementById("preview-toggle").disabled = false;
                     shadowRoot.getElementById("precision-mode").disabled = false;
                     button.disabled = false; button.textContent = "Retry save";
                     shadowRoot.getElementById("impact-notice").textContent = "Could not save the rules. Please try again.";
                 }
             } finally {
                 saveInFlight = false;
+                const applyPreference = deferredPreviewPreference;
+                deferredPreviewPreference = null;
+                if (applyPreference && shadowRoot) {
+                    const notice = shadowRoot.getElementById("impact-notice").textContent;
+                    const label = button.textContent;
+                    applyPreference();
+                    shadowRoot.getElementById("impact-notice").textContent = notice;
+                    button.textContent = label;
+                }
             }
         };
 
