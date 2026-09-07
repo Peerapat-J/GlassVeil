@@ -20,9 +20,7 @@
                 bottom: 24px;
                 left: 50%;
                 transform: translateX(-50%) translateY(100px);
-                background: rgba(13, 16, 19, 0.85);
-                backdrop-filter: blur(20px);
-                -webkit-backdrop-filter: blur(20px);
+                background: #0d1013;
                 border: 1px solid rgba(255, 255, 255, 0.1);
                 border-radius: 16px;
                 padding: 0;
