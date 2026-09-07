@@ -300,7 +300,7 @@
             .impact-outline { border-color: #ffcf70; box-shadow: 0 0 0 1px rgba(255,207,112,.35); }
             .impact-outline .selected-outline-label { background: #ffcf70; color: #171717; }
             #impact-section[hidden] { display: none; }
-            #impact-section { font: 12px/1.45 system-ui, sans-serif; color: #dce4ee; }
+            #impact-section { margin-top: -6px; font: 12px/1.45 system-ui, sans-serif; color: #dce4ee; }
             #impact-summary { margin: 0 0 6px; }
             .warning { color: #ffcf70; }
             #impact-summary.warning { color: #ffcf70; }
