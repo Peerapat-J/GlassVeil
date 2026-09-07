@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 
 root = Path(__file__).resolve().parent.parent
-source = root / "icons/source/veiled-statue.png"
+source = root / "icons/source/veiled-statue-rounded.png"
 for size in (16, 32, 48, 128):
-    output = root / f"icons/icon-{size}.png"
+    output = root / f"icons/icon-rounded-{size}.png"
     subprocess.run(["sips", "--resampleHeightWidth", str(size), str(size), str(source), "--out", str(output)], check=True)
