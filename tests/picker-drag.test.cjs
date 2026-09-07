@@ -73,3 +73,16 @@ test('picker drag: only the captured pointer moves or ends a drag, including can
         assert.equal(panel.style.left, '100px');
     }
 });
+
+test('picker drag: touch on background captures and moves; match list touch stays native', t => {
+    const { panel, get, pointer, captured } = setup(t);
+    const background = get('.drag-background');
+    assert.equal(background.getAttribute('aria-hidden'), 'true');
+    assert.equal(pointer(background, 'pointerdown', { pointerType: 'touch' }).defaultPrevented, true);
+    pointer(panel, 'pointermove', { pointerType: 'touch', clientX: 250, clientY: 170 });
+    assert.equal(panel.style.left, '230px');
+    pointer(panel, 'pointerup', { pointerType: 'touch' });
+    assert.equal(captured.size, 0);
+    assert.equal(pointer(get('#impact-list'), 'pointerdown', { pointerType: 'touch' }).defaultPrevented, false);
+    assert.equal(captured.size, 0);
+});

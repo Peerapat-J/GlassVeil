@@ -99,7 +99,6 @@
                 align-items: center;
                 cursor: grab;
                 user-select: none;
-                touch-action: none;
                 gap: 16px;
             }
 
@@ -319,6 +318,11 @@
             #preview-preference-notice { color: #ffcf70; margin: 0; font: 12px/1.45 system-ui, sans-serif; }
             #impact-refresh { font-weight: 500; }
             .btn:disabled, .toggle-container:disabled { opacity: .45; cursor: default; }
+            /* A separate hit surface blocks native gestures only on draggable backgrounds.
+               Do not put touch-action:none on the panel: descendants cannot undo it. */
+            .drag-background { position: absolute; inset: 0; border-radius: inherit; touch-action: none; }
+            .picker-panel > :not(.drag-background) { position: relative; pointer-events: none; }
+            .picker-panel :is(button, input, select, textarea, a, label, [contenteditable]:not([contenteditable="false"]), #impact-list) { pointer-events: auto; }
         `;
 
         const outlineLayer = document.createElement("div");
@@ -329,6 +333,7 @@
         container.id = "glassveil-panel";
         container.className = "picker-panel";
         container.innerHTML = `
+            <div class="drag-background" aria-hidden="true"></div>
             <div class="panel-header" id="panel-drag-handle">
                 <div class="title-area">
                     <img class="brand-icon" alt="" />
