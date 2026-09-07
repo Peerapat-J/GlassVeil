@@ -25,7 +25,7 @@
                 -webkit-backdrop-filter: blur(20px);
                 border: 1px solid rgba(255, 255, 255, 0.1);
                 border-radius: 16px;
-                padding: 16px 20px 12px;
+                padding: 0;
                 box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
                 display: flex;
                 flex-direction: column;
@@ -320,8 +320,9 @@
             .btn:disabled, .toggle-container:disabled { opacity: .45; cursor: default; }
             /* A separate hit surface blocks native gestures only on draggable backgrounds.
                Do not put touch-action:none on the panel: descendants cannot undo it. */
+            .picker-content { position: relative; flex: none; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 16px 20px 12px; }
             .drag-background { position: absolute; inset: 0; border-radius: inherit; touch-action: none; }
-            .picker-panel > :not(.drag-background) { position: relative; pointer-events: none; }
+            .picker-content > :not(.drag-background) { position: relative; pointer-events: none; }
             .picker-panel :is(button, input, select, textarea, a, label, [contenteditable]:not([contenteditable="false"]), #impact-list) { pointer-events: auto; }
         `;
 
@@ -380,6 +381,12 @@
         const preferenceNotice = document.createElement("p");
         preferenceNotice.id = "preview-preference-notice"; preferenceNotice.hidden = true;
         preferenceNotice.setAttribute("role", "status"); container.appendChild(preferenceNotice);
+        // Size the hit surface against the entire scrollable content, not the
+        // panel's max-height viewport, so it still covers the bottom after scrolling.
+        const content = document.createElement("div");
+        content.className = "picker-content";
+        content.append(...container.childNodes);
+        container.appendChild(content);
         container.querySelector(".brand-icon").src = iconUrl;
         container.querySelector("#undo-btn").addEventListener("click", onUndo);
         container.querySelector("#precision-mode").addEventListener("change", event => onPrecisionChange(event.target.value));
