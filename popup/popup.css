@@ -1,7 +1,7 @@
 /* popup/popup.css */
 
 :root {
-    --bg-dark: #0d1013;
+    --bg-dark: rgba(13, 16, 19, 0.7);
     --border-light: rgba(156, 163, 175, 0.24);
     --text-primary: #ffffff;
     --text-secondary: #9ca3af;
