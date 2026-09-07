@@ -2,7 +2,8 @@
 (function (root) {
     "use strict";
 
-    const createPicker = ({ window, document, generateSelector, saveSelectors, utils, createSelectionState, createPickerUI, analyzeImpact, sameImpact, iconUrl }) => {
+    const createPicker = ({ window, document, generateSelector, saveSelectors, utils, createSelectionState, createPickerUI, analyzeImpact, sameImpact, iconUrl,
+        loadPreviewPreference = async () => null, savePreviewPreference = async () => {} }) => {
         const { formatSelectedOutlineLabel, clampPanelPosition, formatSelectionSummary } = utils;
         let isPickerActive = false;
         let hoveredElement = null;
@@ -16,6 +17,9 @@
         let renderedSelection = new Set();
         let saveInFlight = false;
         let precision = "exact";
+        let previewEnabled = false;
+        let previewRevision = 0;
+        let preferenceWrites = Promise.resolve();
         const generateCurrentSelector = element => generateSelector(element, { mode: precision });
 
         // UI container references
@@ -24,6 +28,17 @@
         let pickerPanel = null;
 
         const getOutlineLayer = () => shadowRoot ? shadowRoot.getElementById("selected-outline-layer") : null;
+
+        const showPreferenceNotice = message => {
+            const notice = shadowRoot?.getElementById("preview-preference-notice");
+            if (notice) { notice.textContent = message; notice.hidden = !message; }
+        };
+
+        const syncPreviewToggle = () => {
+            const toggle = shadowRoot.getElementById("preview-toggle");
+            toggle.classList.toggle("checked", previewEnabled);
+            toggle.setAttribute("aria-checked", String(previewEnabled));
+        };
 
         const clearSelectedOutlines = () => {
             selectedOutlineBoxes.forEach((outlineBox) => outlineBox.remove());
@@ -304,7 +319,17 @@
                 onTogglePreview: handleTogglePreview
             });
 
+            syncPreviewToggle();
             updateSelectionControls();
+            const session = shadowRoot, revision = previewRevision;
+            preferenceWrites.then(loadPreviewPreference).then(enabled => {
+                if (shadowRoot !== session || revision !== previewRevision || saveInFlight) return;
+                if (typeof enabled !== "boolean") return;
+                previewEnabled = enabled;
+                syncPreviewToggle(); updateSelectionControls();
+            }).catch(() => {
+                if (shadowRoot === session && revision === previewRevision) showPreferenceNotice("Could not load the saved Preview Hide setting. You can still change it here.");
+            });
 
             // Event listeners
             document.addEventListener("mouseover", handleMouseOver, true);
@@ -487,9 +512,13 @@
         const handleTogglePreview = (e) => {
             e.stopPropagation();
             if (saveInFlight) return;
-            const toggle = shadowRoot.getElementById("preview-toggle");
-            toggle.setAttribute("aria-checked", String(toggle.classList.toggle("checked")));
+            previewEnabled = !previewEnabled;
+            const enabled = previewEnabled, revision = ++previewRevision, session = shadowRoot;
+            syncPreviewToggle(); showPreferenceNotice("");
             updateSelectionControls();
+            preferenceWrites = preferenceWrites.then(() => savePreviewPreference(enabled)).catch(() => {
+                if (shadowRoot === session && previewRevision === revision) showPreferenceNotice("Could not save Preview Hide for next time. Toggle it again to retry.");
+            });
         };
 
         const handleConfirmBlock = async (e) => {

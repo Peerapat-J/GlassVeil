@@ -24,6 +24,8 @@
         analyzeImpact: globalThis.GlassVeilSelectorImpact.analyzeImpact,
         sameImpact: globalThis.GlassVeilSelectorImpact.sameImpact,
         iconUrl: chrome.runtime.getURL("icons/icon-32.png"),
+        loadPreviewPreference: async () => (await chrome.storage.local.get("pickerPreviewEnabled")).pickerPreviewEnabled === true,
+        savePreviewPreference: enabled => chrome.storage.local.set({ pickerPreviewEnabled: enabled }),
         saveSelectors: async selectors => {
             activeRules = (await storage.appendSelectors(currentDomain, selectors, window.location.href)).rules;
             ruleEngine.apply(activeRules, isBlockerEnabled);

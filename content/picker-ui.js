@@ -312,6 +312,7 @@
             #impact-list span { flex: 0 0 auto; max-width: 55%; text-align: right; }
             #impact-list .match-chip { padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(156,163,175,.3); background: rgba(156,163,175,.08); color: #9ca3af; font-size: 11px; white-space: nowrap; }
             #impact-notice { color: #ffcf70; margin: 6px 0 0; }
+            #preview-preference-notice { color: #ffcf70; margin: 0; font: 12px/1.45 system-ui, sans-serif; }
             #impact-refresh { font-weight: 500; }
             .btn:disabled, .toggle-container:disabled { opacity: .45; cursor: default; }
         `;
@@ -367,6 +368,9 @@
                 </div>
             </div>
         `;
+        const preferenceNotice = document.createElement("p");
+        preferenceNotice.id = "preview-preference-notice"; preferenceNotice.hidden = true;
+        preferenceNotice.setAttribute("role", "status"); container.appendChild(preferenceNotice);
         container.querySelector(".brand-icon").src = iconUrl;
         container.querySelector("#undo-btn").addEventListener("click", onUndo);
         container.querySelector("#precision-mode").addEventListener("change", event => onPrecisionChange(event.target.value));
