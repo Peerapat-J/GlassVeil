@@ -367,9 +367,17 @@ h2 {
     font-family: monospace;
     color: var(--text-secondary);
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-x: auto;
+    cursor: text;
+    user-select: text;
+    scrollbar-width: thin;
+    scrollbar-color: #475569 transparent;
     flex-grow: 1;
+}
+
+.rule-text:focus-visible {
+    outline: 1px solid var(--silver-light);
+    outline-offset: 1px;
 }
 
 .btn-delete {

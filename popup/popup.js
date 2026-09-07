@@ -91,6 +91,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         records.forEach(rule => {
             const li = document.createElement("li"); li.dataset.ruleId = rule.id;
             const text = document.createElement("span"); text.className = "rule-text"; text.textContent = text.title = rule.selector;
+            text.tabIndex = 0;
             const enabled = document.createElement("input"); enabled.type = "checkbox"; enabled.checked = rule.enabled;
             enabled.className = "rule-enabled"; enabled.setAttribute("aria-label", `Enable rule ${rule.selector}`);
             enabled.setAttribute("role", "switch");
