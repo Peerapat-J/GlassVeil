@@ -307,8 +307,7 @@
             .remove-selection:hover { background: rgba(255,71,87,.12); color: #ff4757; }
             .remove-selection:focus-visible { outline: 2px solid var(--silver-light); outline-offset: 1px; }
             .remove-selection:disabled { opacity: .45; cursor: default; }
-            #impact-list code { overflow-x: auto; white-space: nowrap; flex: 1; min-width: 0; cursor: grab; scrollbar-width: thin; }
-            #impact-list code.scrolling { cursor: grabbing; user-select: none; }
+            #impact-list code { overflow-x: auto; white-space: nowrap; flex: 1; min-width: 0; cursor: text; user-select: text; scrollbar-width: thin; }
             #impact-list code:focus-visible { outline: 1px solid var(--silver-light); outline-offset: 1px; }
             #impact-list span { flex: 0 0 auto; max-width: 55%; text-align: right; }
             #impact-list .match-chip { padding: 2px 7px; border-radius: 999px; border: 1px solid rgba(156,163,175,.3); background: rgba(156,163,175,.08); color: #9ca3af; font-size: 11px; white-space: nowrap; }

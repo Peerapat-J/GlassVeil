@@ -201,24 +201,15 @@ test('impact picker: remove a middle selection directly and undo restores its or
     assert.equal(fixture.second.style.display, 'none');
 });
 
-test('impact picker: dragging long selector text scrolls only that row and stops on release', t => {
+test('impact picker: selector text selection does not capture or cancel the pointer', t => {
     const fixture = setup(t); fixture.first.click();
     const code = fixture.shadow().querySelector('#impact-list code');
-    Object.defineProperties(code, { scrollWidth: { value: 900 }, clientWidth: { value: 200 } });
-    let captured = false;
-    code.setPointerCapture = () => { captured = true; };
-    code.hasPointerCapture = () => captured;
-    code.releasePointerCapture = () => { captured = false; };
-    const pointer = (type, x) => {
-        const event = new fixture.window.Event(type, { bubbles: true, cancelable: true });
-        Object.assign(event, { pointerId: 1, pointerType: 'mouse', button: 0, clientX: x });
-        code.dispatchEvent(event);
-    };
-    pointer('pointerdown', 180); pointer('pointermove', 50);
-    assert.equal(code.scrollLeft, 130);
+    const event = new fixture.window.Event('pointerdown', { bubbles: true, cancelable: true });
+    Object.assign(event, { pointerId: 1, pointerType: 'mouse', button: 0, clientX: 180 });
+    code.setPointerCapture = () => assert.fail('Text selection must not capture the pointer');
+    code.dispatchEvent(event);
+    assert.equal(event.defaultPrevented, false);
     assert.equal(fixture.shadow().querySelector('.picker-panel').classList.contains('dragging'), false);
-    pointer('pointerup', 50); pointer('pointermove', 0);
-    assert.equal(code.scrollLeft, 130); assert.equal(captured, false);
 });
 
 test('impact picker: preview preference survives a fresh picker and stores both on and off', async t => {
