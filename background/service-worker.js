@@ -27,12 +27,14 @@ const rebuildContextMenu = () => new Promise((resolve, reject) => {
     });
 });
 let menuSetup = Promise.resolve();
-chrome.runtime.onInstalled.addListener(() => {
+const initializeContextMenu = () => {
     menuSetup = menuSetup.then(rebuildContextMenu).catch(error => {
         console.warn("GlassVeil could not initialize its context menu:", error.message);
     });
     return menuSetup;
-});
+};
+chrome.runtime.onInstalled.addListener(initializeContextMenu);
+chrome.runtime.onStartup.addListener(initializeContextMenu);
 
 async function activatePickerOnTab(tab) {
     const capability = globalThis.GlassVeilTabAccess.classifyTab(tab);

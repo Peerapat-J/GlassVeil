@@ -101,7 +101,7 @@ test('popup: per-rule toggle/edit/delete preserve stable identity and metadata',
     row().querySelector('.btn-delete').click(); await settle(); assert.equal((await storage(chrome).readSite('example.com')).rules.some(rule => rule.id === first.id), false);
 });
 test('background storage router: rejects other senders and serializes all client operations', async () => {
-    const chrome = createChrome(); chrome.runtime.onInstalled = event(); chrome.contextMenus = { create() {}, onClicked: event() }; chrome.commands = { onCommand: event() };
+    const chrome = createChrome(); chrome.runtime.onInstalled = event(); chrome.runtime.onStartup = event(); chrome.contextMenus = { create() {}, onClicked: event() }; chrome.commands = { onCommand: event() };
     const context = vm.createContext({ chrome, console, URL, crypto: globalThis.crypto });
     context.importScripts = (...files) => files.forEach(file => vm.runInContext(readFileSync(resolve(repo, 'background', file), 'utf8'), context));
     vm.runInContext(readFileSync(resolve(repo, 'background/service-worker.js'), 'utf8'), context);

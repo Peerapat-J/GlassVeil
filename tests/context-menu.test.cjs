@@ -14,7 +14,7 @@ function fixture({ existing = true, removeError = '', createError = '' } = {}) {
         if (message && !read) unchecked.push(message);
         delete chrome.runtime.lastError;
     };
-    chrome.runtime.onInstalled = event();
+    chrome.runtime.onInstalled = event(); chrome.runtime.onStartup = event();
     chrome.contextMenus = {
         onClicked: event(),
         removeAll(callback) {
@@ -34,7 +34,8 @@ function fixture({ existing = true, removeError = '', createError = '' } = {}) {
     context.importScripts = (...files) => files.forEach(file => vm.runInContext(readFileSync(resolve(repo, 'background', file), 'utf8'), context));
     vm.runInContext(readFileSync(resolve(repo, 'background/service-worker.js'), 'utf8'), context);
     const install = () => [...chrome.runtime.onInstalled.listeners][0]({ reason: 'update' });
-    return { install, items, unchecked, warnings, calls: () => ({ removeCalls, createCalls }) };
+    const startup = () => [...chrome.runtime.onStartup.listeners][0]();
+    return { install, startup, recover: () => { createError = ""; }, items, unchecked, warnings, calls: () => ({ removeCalls, createCalls }) };
 }
 for (const existing of [false, true]) test(`context menu: install/reload with existing=${existing} creates one current menu`, async () => {
     const f = fixture({ existing });
@@ -53,4 +54,16 @@ for (const failure of ['removeError', 'createError']) test(`context menu: handle
     assert.deepEqual(f.unchecked, []); assert.equal(f.warnings.length, 1);
     assert.match(f.warnings[0].join(' '), /API failed/);
     if (failure === 'removeError') assert.equal(f.calls().createCalls, 0);
+});
+
+test('context menu: startup recovers after creation failed following successful removal', async () => {
+    const f = fixture({ createError: 'Temporary failure' });
+    await f.install();
+    assert.equal(f.items.size, 0);
+    f.recover();
+    await Promise.all([f.startup(), f.install()]);
+    assert.equal(f.items.size, 1);
+    assert.equal(f.items.get('glassveil-block-element').title, 'Block element on this page');
+    assert.deepEqual(f.unchecked, []);
+    assert.equal(f.warnings.length, 1);
 });
