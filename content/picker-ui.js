@@ -319,6 +319,9 @@
             #impact-refresh { font-weight: 500; }
             .btn:disabled, .toggle-container:disabled { opacity: .45; cursor: default; }
             /* A separate hit surface blocks native gestures only on draggable backgrounds.
+               Intentional UX: all non-control backgrounds drag the panel, including touch.
+               Native touch scrolling is reserved for controls and the match list; do not
+               restore header-only dragging or pan-y on this background surface.
                Do not put touch-action:none on the panel: descendants cannot undo it. */
             .picker-content { position: relative; flex: none; width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 16px 20px 12px; }
             .drag-background { position: absolute; inset: 0; border-radius: inherit; touch-action: none; }
