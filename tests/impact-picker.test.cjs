@@ -253,3 +253,25 @@ test('impact picker: preference writes stay ordered and failures are visible wit
     assert.equal(fixture.shadow().querySelector('#preview-preference-notice').hidden, false);
     assert.match(fixture.shadow().querySelector('#preview-preference-notice').textContent, /Could not save/);
 });
+
+for (const succeeds of [false, true]) test(`impact picker: preference loaded during save is deferred (success=${succeeds})`, async t => {
+    let resolvePreference, finishSave;
+    const fixture = setup(t, element => `#${element.id}`, () => new Promise((resolve, reject) => {
+        finishSave = () => succeeds ? resolve() : reject(new Error('write failed'));
+    }), { loadPreviewPreference: () => new Promise(resolve => { resolvePreference = resolve; }) });
+    await settle();
+    fixture.first.click(); fixture.click('confirm-btn');
+    resolvePreference(true); await settle();
+    assert.equal(fixture.shadow().querySelector('#preview-toggle').getAttribute('aria-checked'), 'false');
+    assert.notEqual(fixture.first.style.display, 'none');
+    finishSave(); await settle();
+    if (succeeds) {
+        assert.equal(fixture.shadow(), undefined);
+        assert.notEqual(fixture.first.style.display, 'none');
+    } else {
+        assert.equal(fixture.shadow().querySelector('#preview-toggle').getAttribute('aria-checked'), 'true');
+        assert.equal(fixture.first.style.display, 'none');
+        assert.equal(fixture.shadow().querySelector('#confirm-btn').textContent, 'Retry save');
+        assert.match(fixture.shadow().querySelector('#impact-notice').textContent, /Could not save/);
+    }
+});

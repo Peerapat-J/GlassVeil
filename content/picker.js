@@ -20,6 +20,7 @@
         let previewEnabled = false;
         let previewRevision = 0;
         let preferenceWrites = Promise.resolve();
+        let deferredPreviewPreference = null;
         const generateCurrentSelector = element => generateSelector(element, { mode: precision });
 
         // UI container references
@@ -305,10 +306,15 @@
             updateSelectionControls();
             const session = shadowRoot, revision = previewRevision;
             preferenceWrites.then(loadPreviewPreference).then(enabled => {
-                if (shadowRoot !== session || revision !== previewRevision || saveInFlight) return;
+                if (shadowRoot !== session || revision !== previewRevision) return;
                 if (typeof enabled !== "boolean") return;
-                previewEnabled = enabled;
-                syncPreviewToggle(); updateSelectionControls();
+                const apply = () => {
+                    if (shadowRoot !== session || revision !== previewRevision) return;
+                    previewEnabled = enabled;
+                    syncPreviewToggle(); updateSelectionControls();
+                };
+                if (saveInFlight) deferredPreviewPreference = apply;
+                else apply();
             }).catch(() => {
                 if (shadowRoot === session && revision === previewRevision) showPreferenceNotice("Could not load the saved Preview Hide setting. You can still change it here.");
             });
@@ -544,6 +550,15 @@
                 }
             } finally {
                 saveInFlight = false;
+                const applyPreference = deferredPreviewPreference;
+                deferredPreviewPreference = null;
+                if (applyPreference && shadowRoot) {
+                    const notice = shadowRoot.getElementById("impact-notice").textContent;
+                    const label = button.textContent;
+                    applyPreference();
+                    shadowRoot.getElementById("impact-notice").textContent = notice;
+                    button.textContent = label;
+                }
             }
         };
 
