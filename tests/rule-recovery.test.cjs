@@ -205,3 +205,23 @@ test('popup recovery: transient reload failure preserves the receipt for a later
     assert.equal(get('rule-count').textContent, '2');
     assert.equal(get('undo-rule-action').hidden, true);
 });
+
+test('popup recovery: countdown follows the receipt deadline and cleans up at zero', async t => {
+    const { popup, get } = await popupFixture(t);
+    let tick, cleared = false;
+    popup.setInterval = callback => { tick = callback; return 42; };
+    popup.clearInterval = id => { if (id === 42) cleared = true; };
+    get('clear-all-btn').click(); await settle();
+    const start = Date.now();
+    popup.Date.now = () => start;
+    tick(); assert.match(get('recovery-message').textContent, /30 seconds/);
+    popup.Date.now = () => start + 1000;
+    tick(); assert.match(get('recovery-message').textContent, /29 seconds/);
+    // A delayed timer must catch up from the deadline, not decrement just once.
+    popup.Date.now = () => start + 29000;
+    tick(); assert.match(get('recovery-message').textContent, /1 second while/);
+    popup.Date.now = () => start + 30000;
+    tick(); assert.equal(get('recovery-message').textContent, 'Undo expired.');
+    assert.equal(get('undo-rule-action').hidden, true);
+    assert.equal(cleared, true);
+});

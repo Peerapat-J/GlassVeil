@@ -7,9 +7,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     const tabAccess = globalThis.GlassVeilTabAccess.createTabAccess(chrome);
     let siteRecords = [];
     let currentTab = null, currentDomain = "", supported = false, busy = false, retryAction = null;
-    let recovery = null, recoveryTimer = null;
+    let recovery = null, recoveryTimer = null, recoveryCountdown = null;
     const clearRecovery = (message = "") => {
         window.clearTimeout(recoveryTimer); recoveryTimer = null; recovery = null;
+        window.clearInterval(recoveryCountdown); recoveryCountdown = null;
         get("recovery-notice").hidden = !message;
         get("recovery-message").textContent = message;
         get("undo-rule-action").hidden = true;
@@ -19,9 +20,16 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!snapshot) return;
         recovery = snapshot;
         get("recovery-notice").hidden = false;
-        get("recovery-message").textContent = `${label}. Undo is available for 30 seconds while this popup stays open.`;
+        const updateCountdown = () => {
+            const seconds = Math.max(0, Math.ceil((snapshot.expiresAt - Date.now()) / 1000));
+            if (!seconds) { clearRecovery("Undo expired."); return; }
+            get("recovery-message").textContent = `${label}. Undo is available for ${seconds} ${seconds === 1 ? "second" : "seconds"} while this popup stays open.`;
+        };
+        updateCountdown();
+        if (!recovery) return;
         get("undo-rule-action").hidden = false;
         recoveryTimer = window.setTimeout(() => clearRecovery("Undo expired."), Math.max(0, snapshot.expiresAt - Date.now()));
+        recoveryCountdown = window.setInterval(updateCountdown, 1000);
     };
     window.addEventListener("pagehide", () => clearRecovery());
 
