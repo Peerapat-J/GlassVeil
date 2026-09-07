@@ -20,6 +20,7 @@ test('impact: overlapping and duplicate selectors retain per-selection counts wi
     const { analyze, first, second } = setup(t);
     const impact = analyze([first, second, first], element => element === first ? '.ad' : '#second');
     assert.deepEqual(impact.entries.map(entry => entry.matches.length), [2, 1, 2]);
+    assert.equal(impact.requiresConfirmation, false);
     assert.equal(impact.total, 2); assert.deepEqual(impact.selectors, ['.ad', '#second']);
 });
 test('impact: zero matches, invalid CSS and generator failures do not block valid selections', t => {
@@ -40,11 +41,11 @@ test('impact: wrong target, disconnected elements and page roots cannot be saved
     first.remove(); assert.equal(analyze([first], () => '#first').total, 0);
     assert.equal(document.querySelectorAll('#first').length, 0);
 });
-test('impact: ten distinct exact matches also require confirmation', t => {
+test('impact: ten distinct exact matches do not require confirmation', t => {
     const window = createDOM(t, Array.from({ length: 10 }, (_, i) => `<div id="item-${i}"></div>`).join(''));
     const document = window.document;
     const impact = analyzeImpact({ document, elements: document.querySelectorAll('div'), generateSelector: element => `#${element.id}` });
-    assert.equal(impact.total, 10); assert.equal(impact.requiresConfirmation, true);
+    assert.equal(impact.total, 10); assert.equal(impact.requiresConfirmation, false);
 });
 test('impact: unchanged counts cannot hide a replaced target from the review check', t => {
     const { analyze, first, second } = setup(t);
@@ -52,4 +53,14 @@ test('impact: unchanged counts cannot hide a replaced target from the review che
     assert.equal(sameImpact(before, analyze([first], () => '.ad')), true);
     second.replaceWith(second.cloneNode(true));
     assert.equal(sameImpact(before, analyze([first], () => '.ad')), false);
+});
+
+test('impact: descendants of selected containers are expected; outside matches warn once', t => {
+    const window = createDOM(t, '<div id="box"><span class="item"></span><span class="item"></span></div><span class="item" id="outside"></span>');
+    const document = window.document;
+    const analyze = selector => analyzeImpact({ document, elements: [document.querySelector('#box')], generateSelector: () => selector });
+    assert.equal(analyze('#box, #box .item').requiresConfirmation, false);
+    const broad = analyze('#box, .item');
+    assert.equal(broad.requiresConfirmation, true);
+    assert.deepEqual([...broad.additionalMatches], [document.querySelector('#outside')]);
 });

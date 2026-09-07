@@ -81,7 +81,7 @@
 
         const syncSelectedOutlines = () => {
             renderOutlines(selection, selectedOutlineBoxes, "selected-outline", formatSelectedOutlineLabel);
-            const additional = Array.from(currentImpact?.matches || []).filter(element => !selection.has(element));
+            const additional = Array.from(currentImpact?.additionalMatches || []);
             renderOutlines(additional, impactOutlineBoxes, "selected-outline impact-outline", () => "Also hidden");
         };
 
@@ -161,7 +161,8 @@
             const section = shadowRoot.getElementById("impact-section");
             section.hidden = selection.size === 0;
             const summary = shadowRoot.getElementById("impact-summary");
-            summary.textContent = `${currentImpact.requiresConfirmation ? "Warning: " : ""}These rules will hide ${currentImpact.total} ${currentImpact.total === 1 ? "element" : "elements"} in total.`;
+            summary.textContent = `These rules will hide ${currentImpact.total} ${currentImpact.total === 1 ? "element" : "elements"} in total.`;
+            if (currentImpact.requiresConfirmation) summary.textContent += ` This will also hide ${currentImpact.additionalMatches.size} ${currentImpact.additionalMatches.size === 1 ? "element" : "elements"} you did not select.`;
             if (currentImpact.skipped) summary.textContent += ` ${currentImpact.skipped} ${currentImpact.skipped === 1 ? "selection cannot" : "selections cannot"} be saved.`;
             summary.classList.toggle("warning", currentImpact.requiresConfirmation);
             const list = shadowRoot.getElementById("impact-list");
@@ -184,7 +185,7 @@
                 const count = document.createElement("span");
                 count.className = entry.status === "valid" ? "match-chip" : "match-error";
                 count.textContent = entry.status === "valid" ? `${entry.matches.length} ${entry.matches.length === 1 ? "match" : "matches"}` : errors[entry.status];
-                row.className = entry.status !== "valid" || entry.matches.length > 1 ? "warning" : "";
+                row.className = entry.status !== "valid" || entry.matches.some(match => currentImpact.additionalMatches.has(match)) ? "warning" : "";
                 const remove = document.createElement("button");
                 remove.type = "button"; remove.className = "remove-selection"; remove.textContent = "×";
                 remove.title = "Remove selection";
@@ -514,7 +515,7 @@
             };
             if (!sameImpact(previous, reviewed)) { changed(); return; }
             if (reviewed.requiresConfirmation) {
-                const accepted = window.confirm(`These rules will hide ${reviewed.total} elements. Broad rules may hide content you did not select. Save these rules?`);
+                const accepted = window.confirm(`These rules will also hide ${reviewed.additionalMatches.size} ${reviewed.additionalMatches.size === 1 ? "element" : "elements"} you did not select. Save these rules?`);
                 if (!accepted) return;
                 updateSelectionControls();
                 if (!sameImpact(reviewed, currentImpact)) { changed(); return; }

@@ -173,3 +173,5 @@ The popup removes Undo at expiry and after successful local edits/toggles. Cross
 4. Leave the popup open for 30 seconds: Undo expires. Close/reopen sooner: the old Undo action is gone.
 5. Delete, then edit/toggle/save a rule for the same site from another client: Undo must reject without replacing newer work. Repeat an edit and edit-back; it must still reject. Changes to a different site must not block Undo.
 6. Simulate a restoration write failure: the deletion stays saved and Undo can retry before expiry. Simulate a connection failure after a successful restore: Retry must only synchronize, without another write.
+
+Picker confirmation is based on unique matches outside selected elements and their descendants, with no total-count threshold. The warning, amber outlines and confirmation use that same additional-match set; review comparison also checks it for DOM hierarchy changes.

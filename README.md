@@ -65,7 +65,7 @@ Instead of relying on a predefined filter list, GlassVeil provides a visual elem
    - **Undo** (Cmd+Z on macOS, Ctrl+Z on Windows/Linux) to reverse a selection, deselection, or Select Parent
    - **Preview Hide** to test all matching elements before saving; available from the start. Your on/off choice is remembered across pages and picker sessions until you change it. Closing the picker still restores unsaved preview changes.
    - **Refresh matches** after the page changes
-7. Review each selector and the unique total. Amber outlines mark additional elements that would be hidden. Click **Block** to save; broad rules require another confirmation.
+7. Review each selector and the unique total. Amber outlines mark additional elements that would be hidden. Click **Block** to save. Confirmation is required only for matches outside selected elements and their descendants; the warning states how many extra elements will be hidden. Selecting 10 or more elements alone does not trigger a warning.
 
 Drag any non-interactive panel background to reposition the picker. Buttons, inputs, precision options and the scrollable match list keep their normal behavior.
 

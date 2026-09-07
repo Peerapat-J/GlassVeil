@@ -2,9 +2,10 @@
     "use strict";
 
     const analyzeImpact = ({ elements, generateSelector, document, pickerRoot }) => {
+        const selected = Array.from(elements);
         const matches = new Set();
         const selectors = new Set();
-        const entries = Array.from(elements, element => {
+        const entries = Array.from(selected, element => {
             let selector = "";
             try {
                 selector = generateSelector(element);
@@ -24,18 +25,21 @@
                 return { selector, matches: [], status: "invalid" };
             }
         });
+        const additionalMatches = new Set([...matches].filter(match => !selected.some(element => element.contains(match))));
         return {
+            additionalMatches,
             entries,
             matches,
             selectors: Array.from(selectors),
             total: matches.size,
             skipped: entries.filter(entry => entry.status !== "valid").length,
-            requiresConfirmation: matches.size >= 10 || entries.some(entry => entry.matches.length > 1)
+            requiresConfirmation: additionalMatches.size > 0
         };
     };
 
     // Compare identities too: a DOM replacement can keep the same match count.
-    const sameImpact = (left, right) => left.entries.length === right.entries.length &&
+    const sameImpact = (left, right) => left.additionalMatches.size === right.additionalMatches.size &&
+        [...left.additionalMatches].every(element => right.additionalMatches.has(element)) && left.entries.length === right.entries.length &&
         left.entries.every((entry, index) => {
             const other = right.entries[index];
             return entry.selector === other.selector && entry.status === other.status &&
