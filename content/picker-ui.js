@@ -151,6 +151,7 @@
                 color: #94a3b8;
             }
 
+            .selector-box[hidden] { display: none; }
             .selector-box {
                 display: flex;
                 background: rgba(255, 255, 255, 0.05);

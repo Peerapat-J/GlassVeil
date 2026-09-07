@@ -256,6 +256,7 @@
             }
 
             if (displayInput) {
+                displayInput.parentElement.hidden = hasSelection;
                 displayInput.value = formatSelectionSummary(selectedCount, activeSelector);
             }
 
