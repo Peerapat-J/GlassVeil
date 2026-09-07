@@ -30,7 +30,7 @@ function setup(t) {
 
 test('picker drag: panel background, body gaps and header all move the panel and stay within the viewport', t => {
     const { panel, get, pointer, captured } = setup(t);
-    for (const target of [panel, get('.selector-box'), get('#impact-summary'), get('.action-row'), get('#selection-count')]) {
+    for (const target of [get('.drag-background'), get('.selector-box'), get('#impact-summary'), get('.action-row'), get('#selection-count')]) {
         assert.equal(pointer(target, 'pointerdown').defaultPrevented, true);
         assert.equal(captured.has(1), true);
         pointer(panel, 'pointermove', { clientX: 250, clientY: 170 });
@@ -58,9 +58,9 @@ test('picker drag: controls and scrollable match rows do not start a drag', t =>
 });
 
 test('picker drag: only the captured pointer moves or ends a drag, including cancellation and capture loss', t => {
-    const { panel, pointer, captured } = setup(t);
+    const { panel, get, pointer, captured } = setup(t);
     for (const ending of ['pointercancel', 'lostpointercapture']) {
-        pointer(panel, 'pointerdown');
+        pointer(get('.drag-background'), 'pointerdown');
         pointer(panel, 'pointerdown', { pointerId: 2 });
         pointer(panel, 'pointermove', { pointerId: 2, clientX: 600 });
         pointer(panel, 'pointerup', { pointerId: 2 });
@@ -85,4 +85,21 @@ test('picker drag: touch on background captures and moves; match list touch stay
     assert.equal(captured.size, 0);
     assert.equal(pointer(get('#impact-list'), 'pointerdown', { pointerType: 'touch' }).defaultPrevented, false);
     assert.equal(captured.size, 0);
+});
+
+for (const edge of ['left', 'right', 'overlay']) test(`picker drag: ${edge} scrollbar presses remain native`, t => {
+    const { panel, get, pointer, captured } = setup(t);
+    Object.defineProperties(panel, { clientWidth: { value: edge === 'overlay' ? 498 : 483 },
+        clientHeight: { value: 298 }, scrollHeight: { value: 900 },
+        clientLeft: { value: edge === 'left' ? 16 : 1 } });
+    const clientX = edge === 'left' ? 108 : 592;
+    const down = pointer(panel, 'pointerdown', { clientX });
+    assert.equal(down.defaultPrevented, false);
+    assert.equal(captured.size, 0);
+    assert.equal(panel.classList.contains('dragging'), false);
+    pointer(panel, 'pointermove', { clientX: 300, clientY: 200 });
+    assert.equal(panel.style.left, '');
+    assert.equal(pointer(get('.drag-background'), 'pointerdown').defaultPrevented, true);
+    assert.equal(captured.has(1), true);
+    pointer(panel, 'pointerup');
 });

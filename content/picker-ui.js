@@ -425,6 +425,9 @@
         dragHandle.addEventListener("pointerdown", (e) => {
             // Only drag on left-button mouse input, while still supporting touch/stylus.
             if (dragPointerId !== null || e.button !== 0) return;
+            // Native scrollbar presses target the scroll container, including overlay
+            // scrollbars. Draggable backgrounds hit .drag-background instead.
+            if (e.target === container) return;
             // Keep controls, text editing and the scrollable match list usable.
             if (e.target.closest('button, input, select, textarea, a, label, [contenteditable]:not([contenteditable="false"]), #impact-list')) return;
 
