@@ -186,3 +186,22 @@ test('popup recovery: successful local edits discard old Undo but failed deletio
     popup.document.querySelector('.rule-enabled').click(); await settle();
     assert.equal(get('undo-rule-action').hidden, true);
 });
+
+test('popup recovery: transient reload failure preserves the receipt for a later Undo', async t => {
+    const { chrome, get } = await popupFixture(t);
+    get('clear-all-btn').click(); await settle();
+    const set = chrome.storage.local.set, read = chrome.storage.local.get;
+    chrome.storage.local.set = async () => { throw new Error('write failed'); };
+    get('undo-rule-action').click(); await settle();
+    chrome.storage.local.set = set;
+    chrome.storage.local.get = async () => { throw new Error('read failed'); };
+    get('retry-action').click(); await settle();
+    assert.equal(get('undo-rule-action').hidden, false);
+    assert.equal(get('undo-rule-action').disabled, true);
+    chrome.storage.local.get = read;
+    get('retry-action').click(); await settle();
+    assert.equal(get('undo-rule-action').disabled, false);
+    get('undo-rule-action').click(); await settle();
+    assert.equal(get('rule-count').textContent, '2');
+    assert.equal(get('undo-rule-action').hidden, true);
+});

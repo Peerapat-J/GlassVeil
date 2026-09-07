@@ -56,9 +56,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         badge.classList.toggle("disabled", !toggle.checked);
     };
     const showUnavailable = capability => {
-        clearRecovery();
+        if (capability.status === "unsupported") {
+            clearRecovery();
+            currentDomain = "";
+        }
         supported = false;
-        currentDomain = "";
         toggle.checked = false;
         rulesList.replaceChildren(); get("rule-count").textContent = "0";
         clearBtn.style.display = "none";
