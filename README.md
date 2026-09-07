@@ -13,7 +13,7 @@ Instead of relying on a predefined filter list, GlassVeil provides a visual elem
 - Cosmetic blocking using locally stored CSS selectors
 - Per-site blocking rules
 - Enable or disable blocking for the current site
-- Enable, disable, edit, test, and delete individual rules
+- Enable, disable, edit, and delete individual rules; compare their effects with the rule toggle
 - Match counts and invalid-selector diagnostics in the popup
 - Reset saved rules for the current website
 - Undo a rule deletion or site reset within 30 seconds

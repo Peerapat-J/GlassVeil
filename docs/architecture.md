@@ -10,8 +10,8 @@ GlassVeil loads directly as a Manifest V3 extension. There is no bundle or build
 | `shared/storage.js` | Versioned structured rule API, legacy migration, stable-ID mutations and worker-serialized access; subscribes to the authoritative ruleStore key. |
 | `content/selector-generator.js` | Selector generation with explicit document, Node, CSS.escape and temporary-class dependencies. Generates, validates and deterministically scores ID/attribute/class/ancestor/positional candidates for exact or similar selection. |
 | `content/selector-impact.js` | Evaluates each selection against the document, isolates invalid candidates, deduplicates matches, and compares reviewed element identities before save. |
-| `content/rule-engine.js` | Applies enabled records, isolates invalid selectors, and suspends/resumes the latest rules during Test. |
-| `content/rule-diagnostics.js` | Current-document match counts and a timed, dismissible highlight preview. |
+| `content/rule-engine.js` | Applies enabled records and isolates invalid selectors; retains suspend/resume support for internal diagnostics. |
+| `content/rule-diagnostics.js` | Current-document match counts; also retains an internal timed highlight preview with no popup trigger. |
 | `content/picker-state.js` | Owns selection order, active element and session action-history snapshots; accepts an availability predicate, with no DOM listeners or Chrome APIs. |
 | `content/picker-utils.js` | Pure labels, position clamping and temporary-class classification. |
 | `content/picker-ui.js` | Shadow DOM panel markup/styles and pointer dragging; accepts callbacks instead of saving rules itself. |
@@ -39,7 +39,7 @@ Tests use Node's test runner, jsdom and CSS.escape against local fixtures. `npm 
 | Area | Covered now | Future behavior |
 | --- | --- | --- |
 | Selectors | Stable/generated/duplicate IDs, stable/unstable/temporary classes, escaped characters, no ID/classes, mixed siblings, invalid ID candidate, disconnected elements and Shadow DOM limits. | Website-specific stability remains heuristic; shadow roots are unsupported. Exact/similar modes and candidate scoring are covered. |
-| Rules | Site enabled/disabled, invalid isolation, empty/malformed/duplicate/overlapping rules, zero matches, CSS apply/clear and early attachment/cleanup. | Enabled records, invalid/zero-match diagnostics and temporary Test restoration are covered. |
+| Rules | Site enabled/disabled, invalid isolation, empty/malformed/duplicate/overlapping rules, zero matches, CSS apply/clear and early attachment/cleanup. | Enabled records and invalid/zero-match diagnostics are covered. Legacy diagnostic-preview restoration is tested internally; the popup comparison workflow uses rule toggles. |
 | Storage | Legacy string migration, idempotent/restarted reads, malformed input, duplicate append, exact hostname matching, delete/reset/toggle, preserved other-site data, change subscriptions and failed persistence. | Versioned migration, serialized writes and stable-ID edits are covered; page/subdomain scopes remain #21. |
 | Picker/loading | Selection order/active fallback, parent replacement, multi-select, preview/cancel, save, repeated initialization and complete fallback file order. | Undo history, parent/deselection restoration, disconnected-target filtering, keyboard/editable-field boundaries and preview cleanup are covered. |
 
@@ -141,14 +141,14 @@ The original `rules` and `disabledSites` keys remain untouched as the pre-migrat
 
 The popup reads current-page diagnostics via content messages. Invalid selectors are isolated from other rows and from CSS application; zero matches is distinct from invalid syntax. New selector edits are validated on the active page before persisting; multi-match edits require confirmation. Source data stays local. Counts are refreshed on opening and after mutations; reopening refreshes a page changed since the previous snapshot.
 
-Test pauses cosmetic blocking in the active tab for five seconds and draws an amber rectangle for each matched element with a visible box. Done, pagehide, another Test, picker activation or diagnostics refresh clears the preview. The engine keeps accepting newer rule/settings updates while suspended; cleanup reapplies the latest state. Original inline styles are not changed. Site CSS, closed shadow roots and non-rendered elements limit visible outlines. Other tabs keep their normal blocking.
+Compare a rule's effect by switching its toggle off and on. The enabled state is persisted and synchronized to matching open tabs, and stays at the chosen value until changed. There is no countdown or automatic restoration. Other enabled rules continue to apply, so overlapping rules may still hide the same element. The retained `testRule`/`stopRuleTest` content-message handlers support an internal diagnostic preview; the popup has no Test/Done controls.
 
 ### Rule management manual checks
 
 1. Before upgrading a disposable profile, save legacy selectors for two hostnames, including a duplicate and invalid selector. Upgrade/reload: verify ordering, usable rules, invalid labels and skipped-entry reporting. Inspect local storage to confirm original keys are unchanged and ruleStore IDs survive another restart.
 2. Disable/re-enable one rule: its selector remains stored and other rules continue working. Verify every matching open tab updates and disabled state survives reload/restart.
 3. Verify each row reports its current match count, Invalid selector or 0 matches; errors in one rule must not stop valid rules.
-4. Test a hidden rule: matching elements are temporarily revealed and outlined, Done/timeout restores blocking. Change settings during the preview and verify the latest state wins on restoration.
+4. Compare a hidden rule with its toggle: switch it off, inspect the page, then switch it on to restore its effect. Confirm the chosen state persists after reopening the popup and waiting beyond five seconds; overlapping enabled rules may keep the same element hidden.
 5. Edit a selector: invalid syntax must stay in the editor with an error, duplicate text must reject, multi-match edits require confirmation, and a valid edit must preserve ID/enabled/creation metadata while updating the page.
 6. Delete a rule, repeat a stale request, and reset the site: no neighboring/unrelated site's rule should disappear. Restart and verify removed rules are not restored from legacy backup.
 7. Save a new picker selection: verify ID, enabled, creation time, source URL and hostname scope. Open two clients and save distinct rules concurrently; both should persist.
