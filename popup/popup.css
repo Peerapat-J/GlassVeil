@@ -1,7 +1,7 @@
 /* popup/popup.css */
 
 :root {
-    --bg-dark: rgba(13, 16, 19, 0.85);
+    --bg-dark: #202326;
     --border-light: rgba(156, 163, 175, 0.24);
     --text-primary: #ffffff;
     --text-secondary: #9ca3af;
@@ -22,8 +22,6 @@
 body {
     width: 360px;
     background-color: var(--bg-dark);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
     color: var(--text-primary);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     overflow-x: hidden;
