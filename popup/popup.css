@@ -276,7 +276,7 @@ input:checked+.slider:before {
 
 #pick-element-btn {
     margin-top: 8px;
-    margin-bottom: 0;
+    margin-bottom: 8px;
 }
 
 /* Rules Section */
@@ -285,6 +285,10 @@ input:checked+.slider:before {
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+
+#pick-element-btn:has(+ #page-notice[hidden] + #recovery-notice[hidden]) {
+    margin-bottom: 0;
 }
 
 .rules-header {
