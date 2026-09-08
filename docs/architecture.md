@@ -32,16 +32,16 @@ Definition-only modules publish frozen factory APIs in the extension's isolated 
 - Removing a disconnected active selection now falls back to the remaining selection rather than retaining a detached active element.
 - Preview hides the union of all valid selector matches and restores original inline display values and priorities. Cyan outlines identify selections; amber outlines show additional matches.
 
-## Coverage and remaining feature work
+## Coverage and boundaries
 
 Tests use Node's test runner, jsdom and CSS.escape against local fixtures. `npm test` needs no browser UI or network after `npm ci`. Tests exercise the actual modules plus bootstrap, popup storage actions and both dynamic injection callers.
 
-| Area | Covered now | Future behavior |
+| Area | Covered behavior | Boundary |
 | --- | --- | --- |
-| Selectors | Stable/generated/duplicate IDs, stable/unstable/temporary classes, escaped characters, no ID/classes, mixed siblings, invalid ID candidate, disconnected elements and Shadow DOM limits. | Website-specific stability remains heuristic; shadow roots are unsupported. Exact/similar modes and candidate scoring are covered. |
-| Rules | Site enabled/disabled, invalid isolation, empty/malformed/duplicate/overlapping rules, zero matches, CSS apply/clear and early attachment/cleanup. | Enabled records and invalid/zero-match diagnostics are covered. Legacy diagnostic-preview restoration is tested internally; the popup comparison workflow uses rule toggles. |
-| Storage | Legacy string migration, idempotent/restarted reads, malformed input, duplicate append, exact hostname matching, delete/reset/toggle, preserved other-site data, change subscriptions and failed persistence. | Versioned migration, serialized writes and stable-ID edits are covered; page/subdomain scopes remain #21. |
-| Picker/loading | Selection order/active fallback, parent replacement, multi-select, preview/cancel, save, repeated initialization and complete fallback file order. | Undo history, parent/deselection restoration, disconnected-target filtering, keyboard/editable-field boundaries and preview cleanup are covered. |
+| Selectors | Stable/generated/duplicate IDs, stable/unstable/temporary classes, escaped characters, no ID/classes, mixed siblings, invalid candidates, disconnected elements, exact/similar modes and deterministic candidate scoring. | Website-specific stability remains heuristic; shadow roots are unsupported. |
+| Rules | Site and individual-rule enabled states, invalid isolation, empty/malformed/duplicate/overlapping rules, zero matches, diagnostics, CSS apply/clear and early attachment/cleanup. | Diagnostic preview remains internal; the popup comparison workflow uses rule toggles. |
+| Storage | Versioned legacy migration, idempotent/restarted reads, malformed input, duplicate handling, serialized writes, stable-ID edits, exact hostname matching, recovery, change subscriptions and failed persistence. | Rules currently support exact-hostname scope only. |
+| Picker/loading | Selection order and active fallback, parent replacement, multi-select, impact preview, undo history, disconnected-target filtering, keyboard/editable-field boundaries, save/cancel cleanup, repeated initialization and complete fallback file order. | Automated DOM checks do not simulate browser layout or live websites. |
 
 The document selector engine does not pierce shadow roots. Disconnected, shadow-root, page-root and picker targets return no candidate. Exact mode returns only a selector that currently matches its target alone; this does not guarantee that a future website redesign preserves the selector.
 
