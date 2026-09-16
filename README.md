@@ -56,7 +56,7 @@ Instead of relying on a predefined filter list, GlassVeil provides a visual elem
 2. Click the extension icon.
 3. Click **Pick Element to Block**.
 
-<img src="readmeAsset/menu_v1.png" alt="GlassVeil Pick Element button" width="420">
+<img width="360" height="235" alt="image" src="https://github.com/user-attachments/assets/328647d1-d266-4e14-bb07-1ae6be906aa1" />
 
 4. Hover over a page element to inspect it.
 5. Click one or more elements to select them. Click a selected element again to remove it from the current selection.
@@ -69,11 +69,11 @@ Instead of relying on a predefined filter list, GlassVeil provides a visual elem
 
 Drag any non-interactive panel background to reposition the picker. Buttons, inputs, precision options and the scrollable match list keep their normal behavior.
 
-<img src="readmeAsset/previewHide.png" alt="GlassVeil Preview Hide control" width="420">
+<img width="524" height="350" alt="image" src="https://github.com/user-attachments/assets/ea4e88bf-124a-44cb-a866-e3ff78cfd2e5" />
 
 The selectors are saved for the current domain and applied immediately.
 
-<img src="readmeAsset/blockList_v1.png" alt="GlassVeil saved rules list" width="420">
+<img width="362" height="478" alt="image" src="https://github.com/user-attachments/assets/a848f88f-7013-4346-b782-dd4bb3bec2d6" />
 
 ### Toggle blocking for a site
 
