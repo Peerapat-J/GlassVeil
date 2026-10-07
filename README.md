@@ -4,9 +4,9 @@ GlassVeil is a personal cosmetic element-blocking Chrome extension that lets you
 
 Instead of relying only on predefined filter list or advertise blocker extension which on some site these ads banners will not be filtered out.
 
-GlassVeil provides a visual element picker. Select one or more elements on the current website, preview the result, confirm the block, and GlassVeil saves CSS selectors for that domain.
+This project provides a visual element picker. Select any elements on the current website, preview the result, confirm the block and saves CSS selectors for that domain.
 
-## Features
+## Main features
 
 - Visual element picker for selecting one or more page elements
 - Exact element and Similar elements modes with stable selector candidates
@@ -64,7 +64,7 @@ The selectors are saved for the current domain and applied immediately.
 
 ## Permissions
 
-GlassVeil uses the following permissions:
+Use as the following:
 
 - `storage` - Save site rules and disabled-site settings locally.
 - `activeTab` - Interact with the current active tab when the picker is launched.
@@ -74,7 +74,7 @@ GlassVeil uses the following permissions:
 
 ## Limitations
 
-GlassVeil performs cosmetic element blocking. It hides matching elements from view but does not prevent their network requests from loading.
+As above mentioned, this project only performs cosmetic element blocking. It hides matching elements from view. It does not prevent their network requests from loading.
 
 It cannot run on restricted browser pages such as:
 
@@ -84,7 +84,8 @@ edge://
 about:
 ```
 
-The popup disables site controls on unsupported pages while keeping the **gear button** available. If a normal website cannot be reached, it shows a connection error with **Retry**; refresh the page first. Missing tab details can also be retried.
+The popup disables site controls on unsupported pages while keeping the **gear button** available. 
+If a normal website cannot be reached, it shows a connection error with **Retry**; refresh the page first. Missing tab details can also be retried.
 
 Some websites frequently change their HTML structure or generated class names. In those cases, a previously saved selector may stop matching or may require adjustment.
 
