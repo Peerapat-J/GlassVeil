@@ -2,7 +2,7 @@
 (function (root) {
     "use strict";
 
-    const createPicker = ({ window, document, generateSelector, saveSelectors, utils, createSelectionState, createPickerUI, analyzeImpact, sameImpact, iconUrl,
+    const createPicker = ({ window, document, generateSelector, saveSelectors, utils, createSelectionState, createPickerUI, createPickerInput, analyzeImpact, sameImpact, iconUrl,
         loadPreviewPreference = async () => null, savePreviewPreference = async () => {} }) => {
         const { formatSelectedOutlineLabel, clampPanelPosition, formatSelectionSummary } = utils;
         let isPickerActive = false;
@@ -27,6 +27,14 @@
         let pickerRoot = null;
         let shadowRoot = null;
         let pickerPanel = null;
+        const input = createPickerInput({ window, document,
+            onHover: element => {
+                if (hoveredElement) handleMouseOut({ target: hoveredElement });
+                if (element && !saveInFlight) handleMouseOver({ target: element });
+            },
+            onSelect: element => handleElementClick(element),
+            onKeyDown: event => handleKeyDown(event)
+        });
 
         const getOutlineLayer = () => shadowRoot ? shadowRoot.getElementById("selected-outline-layer") : null;
 
@@ -97,6 +105,7 @@
 
         const handleViewportChange = () => {
             clampPickerPanelToViewport();
+            input.refreshHover();
             scheduleSelectedOutlineSync();
         };
 
@@ -277,15 +286,6 @@
             // Create the Shadow DOM container for Picker UI
             pickerRoot = document.createElement("div");
             pickerRoot.id = "glassveil-picker-root";
-            // Ensure the container is isolated from page layouts
-            pickerRoot.style.position = "fixed";
-            pickerRoot.style.zIndex = "2147483647"; // Max z-index
-            pickerRoot.style.top = "0";
-            pickerRoot.style.left = "0";
-            pickerRoot.style.width = "0";
-            pickerRoot.style.height = "0";
-            document.body.appendChild(pickerRoot);
-
             shadowRoot = pickerRoot.attachShadow({ mode: "open" });
 
             // Inject Shadow DOM UI Markup & Style
@@ -301,6 +301,7 @@
                 onConfirm: handleConfirmBlock,
                 onTogglePreview: handleTogglePreview
             });
+            input.start({ pickerRoot, shadowRoot, pickerPanel });
 
             syncPreviewToggle();
             updateSelectionControls();
@@ -320,10 +321,6 @@
             });
 
             // Event listeners
-            document.addEventListener("mouseover", handleMouseOver, true);
-            document.addEventListener("mouseout", handleMouseOut, true);
-            document.addEventListener("click", handleElementClick, true);
-            document.addEventListener("keydown", handleKeyDown, true);
             document.addEventListener("scroll", handleViewportChange, true);
             window.addEventListener("resize", handleViewportChange, true);
         };
@@ -331,6 +328,7 @@
         const stopPicker = () => {
             if (!isPickerActive) return;
             isPickerActive = false;
+            input.stop();
 
             restorePreview();
 
@@ -344,10 +342,6 @@
             clearSelectedOutlines();
 
             // Clean up event listeners
-            document.removeEventListener("mouseover", handleMouseOver, true);
-            document.removeEventListener("mouseout", handleMouseOut, true);
-            document.removeEventListener("click", handleElementClick, true);
-            document.removeEventListener("keydown", handleKeyDown, true);
             document.removeEventListener("scroll", handleViewportChange, true);
             window.removeEventListener("resize", handleViewportChange, true);
 
@@ -410,22 +404,8 @@
         };
 
         // Click handler to toggle one element in the current selection
-        const handleElementClick = (e) => {
-            if (!isPickerActive) return;
-
-            // Check if clicked inside our Shadow DOM panel BEFORE stopping propagation.
-            // composedPath() lets us see through Shadow DOM boundaries correctly.
-            const path = e.composedPath();
-            if (path.includes(pickerRoot)) {
-                return;
-            }
-            if (saveInFlight) { e.preventDefault(); e.stopPropagation(); return; }
-
-            // Prevent navigating or click effects on page elements only
-            e.preventDefault();
-            e.stopPropagation();
-
-            const targetElement = e.target;
+        const handleElementClick = targetElement => {
+            if (!isPickerActive || saveInFlight) return;
 
             if (hoveredElement === targetElement) {
                 targetElement.classList.remove("glassveil-picker-hovered");
@@ -449,6 +429,8 @@
         // Keyboard shortcuts stay local to the picker session.
         const handleKeyDown = (e) => {
             if (e.key === "Escape") {
+                e.preventDefault();
+                e.stopImmediatePropagation();
                 stopPicker();
                 return;
             }
@@ -456,7 +438,7 @@
                 !(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
             const editable = e.composedPath().some(node => node.isContentEditable ||
                 node.matches?.('input, textarea, select, [contenteditable]:not([contenteditable="false"])'));
-            if (!editable && handleUndo(e)) e.preventDefault();
+            if (!editable && handleUndo(e)) { e.preventDefault(); e.stopImmediatePropagation(); }
         };
 
         const handleUndo = (e) => {

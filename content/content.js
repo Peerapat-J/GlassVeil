@@ -21,6 +21,7 @@
         utils: globalThis.GlassVeilPickerUtils,
         createSelectionState: globalThis.GlassVeilPickerState.createSelectionState,
         createPickerUI: globalThis.GlassVeilPickerUI.createPickerUI,
+        createPickerInput: globalThis.GlassVeilPickerInput.createPickerInput,
         analyzeImpact: globalThis.GlassVeilSelectorImpact.analyzeImpact,
         sameImpact: globalThis.GlassVeilSelectorImpact.sameImpact,
         iconUrl: chrome.runtime.getURL("icons/icon-32.png"),

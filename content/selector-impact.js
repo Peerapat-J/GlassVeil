@@ -13,7 +13,8 @@
                 const sheet = new document.defaultView.CSSStyleSheet();
                 sheet.insertRule(`${selector} { display: none !important; }`, 0);
                 const found = Array.from(document.querySelectorAll(selector));
-                if (found.includes(document.documentElement) || found.includes(document.body) || found.includes(pickerRoot)) {
+                if (found.includes(document.documentElement) || found.includes(document.body) ||
+                    found.some(match => pickerRoot && match.contains(pickerRoot))) {
                     return { selector, matches: [], status: "page-root" };
                 }
                 if (!found.length) return { selector, matches: [], status: "zero" };

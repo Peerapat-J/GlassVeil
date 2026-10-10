@@ -56,6 +56,8 @@ The popup shows the currently configured shortcut, or **Not set** if none is ass
 
 Drag any non-interactive panel background to reposition the picker. Buttons, inputs, precision options and the scrollable match list keep their normal behavior.
 
+While the picker is active, a transparent layer receives page clicks so links and ads are selected instead of activated. An ad inside an iframe is selected as the whole iframe container. Cancel or Escape restores normal page interaction. After reloading the extension, refresh the website before testing so the input guards initialize before page handlers.
+
 <img width="524" height="350" alt="image" src="https://github.com/user-attachments/assets/ea4e88bf-124a-44cb-a866-e3ff78cfd2e5" />
 
 The selectors are saved for the current domain and applied immediately.
@@ -90,6 +92,8 @@ If a normal website cannot be reached, it shows a connection error with **Retry*
 Some websites frequently change their HTML structure or generated class names. In those cases, a previously saved selector may stop matching or may require adjustment.
 
 ## Installation
+
+For a local test page with clickable ads, iframe containers and page event counters, see [the picker testing guide](docs/issue-45-picker-input.md).
 
 ### Load as an unpacked extension
 

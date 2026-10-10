@@ -15,6 +15,7 @@ GlassVeil loads directly as a Manifest V3 extension. There is no bundle or build
 | `content/picker-state.js` | Owns selection order, active element and session action-history snapshots; accepts an availability predicate, with no DOM listeners or Chrome APIs. |
 | `content/picker-utils.js` | Pure labels, position clamping and temporary-class classification. |
 | `content/picker-ui.js` | Shadow DOM panel markup/styles and pointer dragging; accepts callbacks instead of saving rules itself. |
+| `content/picker-input.js` | Early window capture guards, transparent input shield, top-layer placement and document hit testing; delegates hover, selection and keyboard actions. |
 | `content/picker.js` | Picker lifecycle, page events, preview restoration, selection outlines and interaction between state and UI. Saving is an injected callback. |
 | `popup/popup.js` | Current-site controls, loading/unsupported/error states and retry; delegates storage and tab operations. |
 | `shared/tab-access.js` | Shared popup/service-worker URL capability checks, current-tab verification and manifest-based fallback injection. |
@@ -22,7 +23,7 @@ GlassVeil loads directly as a Manifest V3 extension. There is no bundle or build
 
 Definition-only modules publish frozen factory APIs in the extension's isolated world. Mutable state lives inside each factory instance, and collaborators are passed explicitly. CommonJS exports allow tests to load modules without running the extension.
 
-`manifest.json` declares the module order and puts `content/content.js` last. Both popup and service worker use `shared/tab-access.js` to read the same JS/CSS lists from the manifest for fallback injection. The worker imports this helper with `importScripts`; it is not injected into webpages. The popup loads `shared/storage.js` before its own script. Only the entry point registers Chrome listeners; its injection guard prevents a second engine or listener set. Picker start/stop separately manages page event listeners.
+`manifest.json` declares the module order and puts `content/content.js` last. Both popup and service worker use `shared/tab-access.js` to read the same JS/CSS lists from the manifest for fallback injection. The worker imports this helper with `importScripts`; it is not injected into webpages. The popup loads `shared/storage.js` before its own script. Only the entry point registers Chrome listeners; its injection guard prevents a second engine or listener set. The picker factory reserves window capture order once at initialization; those guards are dormant outside selection sessions. Picker start/stop manages the input surface and viewport listeners. See [the input testing guide](issue-45-picker-input.md) for browser validation and late-injection boundaries.
 
 ## Preserved behavior and narrow corrections
 

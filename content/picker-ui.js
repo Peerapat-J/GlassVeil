@@ -11,6 +11,7 @@
             }
 
             .picker-panel {
+                pointer-events: auto;
                 cursor: grab;
                 --silver-light: #e8edf3;
                 --silver-mid: #9ca3af;

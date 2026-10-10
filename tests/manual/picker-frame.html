@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Test iframe ad</title>
+<style>body { margin: 0; font: 22px system-ui; background: #fce7f3; } a { display: flex; position: fixed; inset: 0; align-items: center; justify-content: center; color: #831843; } </style>
+</head><body><a href="#activated">Iframe ad — select its container without opening this link</a>
+<script>
+    for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click']) {
+        window.addEventListener(type, () => parent.postMessage({ fixtureFrameEvent: type }, 'http://127.0.0.1:8765'), true);
+    }
+</script>
+</body></html>

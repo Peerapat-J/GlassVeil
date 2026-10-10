@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>GlassVeil picker input fixture</title>
+    <link rel="stylesheet" href="/content/content.css">
+    <style>
+        body { margin: 24px; color: #18212c; background: #f1f5f9; font: 16px system-ui; }
+        h1 { margin: 0 0 8px; font-size: 24px; }
+        .fixture-controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+        button, select { font: inherit; padding: 8px 12px; }
+        #status { white-space: pre-wrap; font: 13px monospace; }
+        .stage { position: fixed; inset: 200px 24px 140px; }
+        .target { box-sizing: border-box; width: 100%; height: 100%; padding: 30px;
+            display: flex; align-items: center; justify-content: center; font: 22px system-ui;
+            background: #fff4cc; border: 3px solid #b78600; color: #514000; cursor: pointer; }
+        .target[hidden] { display: none; }
+        dialog { padding: 30px; width: 70vw; height: 50vh; border: 2px solid #637c97; }
+        dialog::backdrop { background: #18212c66; }
+        .stage-overlay { position: fixed; inset: 200px 24px 140px; background: #dbeafe;
+            z-index: 2147483647; display: flex; align-items: center; justify-content: center; }
+    </style>
+    <script src="/content/picker-utils.js"></script>
+    <script src="/content/selector-generator.js"></script>
+    <script src="/content/picker-state.js"></script>
+    <script src="/content/picker-ui.js"></script>
+    <script src="/content/selector-impact.js"></script>
+    <script src="/content/picker-input.js"></script>
+    <script src="/content/picker.js"></script>
+</head>
+<body>
+    <h1>GlassVeil picker input fixture</h1>
+    <p id="mode">Load the unpacked extension and start its picker. Selecting a target must keep all activity counters at 0.</p>
+    <div class="fixture-controls">
+        <label>Target <select id="scenario">
+            <option value="link">Clickable link</option>
+            <option value="button">Button with down/up handlers</option>
+            <option value="same-frame">Same-origin iframe</option>
+            <option value="cross-frame">Cross-origin iframe (port 8766)</option>
+            <option value="overlay">Maximum z-index page overlay</option>
+            <option value="nested">Nested CSS scroll container</option>
+            <option value="dialog">Modal dialog</option>
+        </select></label>
+        <button id="start-demo" hidden>Start demo picker</button>
+        <button id="reset-counts">Reset counters</button>
+    </div>
+    <pre id="status" role="status"></pre>
+    <div class="stage">
+        <a id="fixture-link" class="target" href="#activated"><span>Clickable ad link (nested text)</span></a>
+        <button id="fixture-button" class="target" hidden>Ad button with pointer and mouse handlers</button>
+        <iframe id="same-frame" class="target" title="Same-origin test ad" src="/frame" hidden></iframe>
+        <iframe id="cross-frame" class="target" title="Cross-origin test ad" src="http://127.0.0.1:8766/frame" hidden></iframe>
+    </div>
+    <script src="/fixture.js"></script>
+</body>
+</html>

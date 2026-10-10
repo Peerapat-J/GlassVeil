@@ -5,13 +5,14 @@ const { createPicker } = require('../content/picker.js');
 const utils = require('../content/picker-utils.js');
 const { createSelectionState } = require('../content/picker-state.js');
 const { createPickerUI } = require('../content/picker-ui.js');
+const { createPickerInput } = require('../content/picker-input.js');
 const { analyzeImpact, sameImpact } = require('../content/selector-impact.js');
 function setup(t, generateSelector = () => '.ad', save = async () => {}, preferences = {}) {
     const window = createDOM(t, '<div class="ad" id="first"></div><div class="ad" id="second" style="display: block !important"></div><p id="keep"></p>');
     const document = window.document, saved = [];
     let confirmations = 0;
     window.confirm = () => { confirmations++; return true; };
-    const picker = createPicker({ window, document, generateSelector, utils, createSelectionState, createPickerUI, analyzeImpact, sameImpact,
+    const picker = createPicker({ window, document, generateSelector, utils, createSelectionState, createPickerUI, createPickerInput, analyzeImpact, sameImpact,
         iconUrl: 'data:image/png;base64,', ...preferences, saveSelectors: async selectors => { await save(); saved.push(selectors); } });
     picker.start();
     const shadow = () => document.querySelector('#glassveil-picker-root')?.shadowRoot;
