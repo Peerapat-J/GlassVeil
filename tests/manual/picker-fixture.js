@@ -8,6 +8,7 @@
     let picker;
     // Construct before adversarial window capture handlers, just as document_start does.
     if (demo) {
+        const engine = GlassVeilRuleEngine.createRuleEngine({ document, MutationObserver });
         picker = GlassVeilPicker.createPicker({
             window, document, utils: GlassVeilPickerUtils,
             createSelectionState: GlassVeilPickerState.createSelectionState,
@@ -20,11 +21,11 @@
             iconUrl: '/icons/icon-32.png',
             saveSelectors: async selectors => {
                 saved = selectors;
-                for (const selector of selectors) document.querySelectorAll(selector).forEach(element => { element.style.display = 'none'; });
+                engine.apply(selectors, true);
                 render();
             }
         });
-        document.querySelector('#mode').textContent = 'Standalone demo: actual picker modules, saves in this tab only. No extension storage or toolbar integration.';
+        document.querySelector('#mode').textContent = 'Standalone demo: actual picker modules, saves in this tab only. USER-origin CSS requires the installed extension.';
         document.querySelector('#start-demo').hidden = false;
         document.querySelector('#start-demo').addEventListener('click', () => picker.start());
     }
@@ -44,6 +45,7 @@
     document.querySelector('#scenario').addEventListener('change', event => {
         document.querySelectorAll('.target').forEach(element => { element.hidden = true; element.style.removeProperty('display'); });
         document.querySelector('.stage-overlay')?.remove();
+        document.querySelector('#protected-ad')?.remove();
         document.querySelector('#nested-scroll')?.remove();
         document.querySelector('dialog')?.remove();
         const value = event.target.value;
@@ -52,6 +54,12 @@
         if (value === 'overlay') {
             const overlay = document.createElement('div'); overlay.id = 'page-overlay'; overlay.className = 'stage-overlay';
             overlay.textContent = 'Page overlay at maximum z-index'; document.body.appendChild(overlay);
+        }
+        if (value === 'important') {
+            const ad = document.createElement('div'); ad.id = 'protected-ad';
+            ad.textContent = 'Ad with display / outline reset inline !important';
+            ad.style.cssText = 'position:fixed;inset:200px 24px 140px;display:flex!important;outline:none!important;box-shadow:none!important;background:#fff4cc;align-items:center;justify-content:center;cursor:pointer';
+            document.body.appendChild(ad);
         }
         if (value === 'nested') {
             const scroller = document.createElement('div'); scroller.id = 'nested-scroll';
@@ -67,6 +75,14 @@
         }
         for (const key of Object.keys(counts)) counts[key] = 0;
         render();
+    });
+    document.querySelector('#rewrite-ad').addEventListener('click', () => {
+        const ad = document.querySelector('#protected-ad');
+        if (ad) {
+            const replacement = ad.cloneNode(true);
+            replacement.style.setProperty('display', 'flex', 'important');
+            ad.replaceWith(replacement);
+        }
     });
     render();
 })();

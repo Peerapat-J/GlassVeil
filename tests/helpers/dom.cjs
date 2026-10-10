@@ -49,6 +49,7 @@ function createChrome(initial = {}) {
     };
     chrome.runtime.id = 'fixture';
     chrome.runtime.sendMessage = async message => {
+        if (message.type === 'glassveil-user-css') return { ok: true };
         server ||= require('../../shared/storage.js').createStorage({ area: chrome.storage.local, changes });
         try { return { ok: true, value: await server[message.method](...message.args) }; }
         catch (error) { return { ok: false, error: error.message, code: error.code }; }

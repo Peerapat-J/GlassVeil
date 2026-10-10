@@ -11,6 +11,7 @@
         const selection = createSelectionState({ isAvailable });
         const previewedElements = new Map();
         const selectedOutlineBoxes = new Map();
+        const hoverOutlineBoxes = new Map();
         let outlineUpdateFrame = null;
         const impactOutlineBoxes = new Map();
         let currentImpact = null;
@@ -54,6 +55,8 @@
             selectedOutlineBoxes.clear();
             impactOutlineBoxes.forEach(box => box.remove());
             impactOutlineBoxes.clear();
+            hoverOutlineBoxes.forEach(box => box.remove());
+            hoverOutlineBoxes.clear();
 
             if (outlineUpdateFrame !== null) {
                 window.cancelAnimationFrame(outlineUpdateFrame);
@@ -79,7 +82,17 @@
                     layer.appendChild(box);
                     boxes.set(element, box);
                 }
-                const rect = element.getBoundingClientRect();
+                const preview = previewedElements.get(element);
+                const scrollDelta = preview ? preview.scrollers.reduce((delta, snapshot) => ({
+                    x: delta.x + snapshot.element.scrollLeft - snapshot.left,
+                    y: delta.y + snapshot.element.scrollTop - snapshot.top
+                }), { x: 0, y: 0 }) : { x: 0, y: 0 };
+                const rect = preview ? {
+                    left: preview.rect.left - scrollDelta.x - (preview.fixed ? 0 : window.scrollX - preview.scrollX),
+                    right: preview.rect.right - scrollDelta.x - (preview.fixed ? 0 : window.scrollX - preview.scrollX),
+                    top: preview.rect.top - scrollDelta.y - (preview.fixed ? 0 : window.scrollY - preview.scrollY),
+                    bottom: preview.rect.bottom - scrollDelta.y - (preview.fixed ? 0 : window.scrollY - preview.scrollY)
+                } : element.getBoundingClientRect();
                 const left = Math.max(0, rect.left), top = Math.max(0, rect.top);
                 const right = Math.min(window.innerWidth, rect.right), bottom = Math.min(window.innerHeight, rect.bottom);
                 box.style.display = right > left && bottom > top ? "block" : "none";
@@ -89,6 +102,8 @@
         };
 
         const syncSelectedOutlines = () => {
+            renderOutlines(hoveredElement && !selection.has(hoveredElement) ? [hoveredElement] : [],
+                hoverOutlineBoxes, "selected-outline hover-outline", () => "");
             renderOutlines(selection, selectedOutlineBoxes, "selected-outline", formatSelectedOutlineLabel);
             const additional = Array.from(currentImpact?.additionalMatches || []);
             renderOutlines(additional, impactOutlineBoxes, "selected-outline impact-outline", () => "Also hidden");
@@ -103,8 +118,16 @@
             });
         };
 
-        const handleViewportChange = () => {
+        const handleViewportChange = event => {
             clampPickerPanelToViewport();
+            // Do not restore page-flow previews on scroll: doing so can move the
+            // viewport and trigger another scroll. Resize needs fresh layout.
+            if (event.type === "resize" && previewedElements.size && !saveInFlight) {
+                const elements = Array.from(previewedElements.keys());
+                restorePreview();
+                elements.forEach(previewElement);
+                elements.forEach(element => element.style.setProperty("display", "none", "important"));
+            }
             input.refreshHover();
             scheduleSelectedOutlineSync();
         };
@@ -146,8 +169,16 @@
         const previewElement = (element) => {
             if (!element || previewedElements.has(element)) return;
 
-            previewedElements.set(element, { value: element.style.getPropertyValue("display"), priority: element.style.getPropertyPriority("display") });
-            element.style.setProperty("display", "none", "important");
+            let fixed = false;
+            const scrollers = [];
+            for (let ancestor = element; ancestor; ancestor = ancestor.parentElement) {
+                if (ancestor !== element && ancestor !== document.body && ancestor !== document.documentElement) {
+                    scrollers.push({ element: ancestor, left: ancestor.scrollLeft, top: ancestor.scrollTop });
+                }
+                if (window.getComputedStyle(ancestor).position === "fixed") { fixed = true; break; }
+            }
+            previewedElements.set(element, { value: element.style.getPropertyValue("display"), priority: element.style.getPropertyPriority("display"),
+                rect: element.getBoundingClientRect(), scrollX: window.scrollX, scrollY: window.scrollY, fixed, scrollers });
         };
 
         const isPreviewEnabled = () => {
@@ -163,7 +194,11 @@
             }
             selection.prune();
             currentImpact = analyzeImpact({ elements: selection, generateSelector: generateCurrentSelector, document, pickerRoot });
-            if (isPreviewEnabled()) currentImpact.matches.forEach(previewElement);
+            if (isPreviewEnabled()) {
+                // Capture every rectangle before an ancestor preview can collapse it.
+                currentImpact.matches.forEach(previewElement);
+                currentImpact.matches.forEach(element => element.style.setProperty("display", "none", "important"));
+            }
             return currentImpact;
         };
 
@@ -385,6 +420,7 @@
             if (displayInput && selection.size === 0) {
                 displayInput.value = selector;
             }
+            syncSelectedOutlines();
         };
 
         const handleMouseOut = (e) => {
@@ -395,6 +431,7 @@
                     hoveredElement.classList.remove("glassveil-picker-hovered");
                 }
                 hoveredElement = null;
+                syncSelectedOutlines();
 
                 const displayInput = shadowRoot.getElementById("selector-display");
                 if (displayInput && selection.size === 0) {

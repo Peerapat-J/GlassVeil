@@ -75,6 +75,9 @@
                 text-align: center;
             }
 
+            .hover-outline { border-style: dashed; }
+            .hover-outline .selected-outline-label { display: none; }
+
             .picker-panel.active {
                 transform: translateX(-50%) translateY(0);
                 opacity: 1;

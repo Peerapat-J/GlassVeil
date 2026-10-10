@@ -12,7 +12,12 @@
         document, Node, CSS,
         isPickerStateClass: globalThis.GlassVeilPickerUtils.isPickerStateClass
     });
-    const ruleEngine = globalThis.GlassVeilRuleEngine.createRuleEngine({ document, MutationObserver });
+    const ruleEngine = globalThis.GlassVeilRuleEngine.createRuleEngine({ document, MutationObserver,
+        replaceUserCSS: async ({ css, previousCSS }) => {
+            const result = await chrome.runtime.sendMessage({ type: "glassveil-user-css", css, previousCSS });
+            if (!result?.ok) throw new Error(result?.error || "Could not apply blocking styles");
+        }
+    });
     const diagnostics = globalThis.GlassVeilRuleDiagnostics.createDiagnostics({ document, window, ruleEngine });
     let activeRules = [];
     let isBlockerEnabled = true;
@@ -30,6 +35,7 @@
         saveSelectors: async selectors => {
             activeRules = (await storage.appendSelectors(currentDomain, selectors, window.location.href)).rules;
             ruleEngine.apply(activeRules, isBlockerEnabled);
+            await ruleEngine.flush();
         }
     });
 

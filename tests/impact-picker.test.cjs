@@ -20,6 +20,42 @@ function setup(t, generateSelector = () => '.ad', save = async () => {}, prefere
     const first = document.querySelector('#first'), second = document.querySelector('#second');
     return { window, document, first, second, picker, shadow, click, saved, confirmations: () => confirmations };
 }
+test('picker: independent hover and selection frames survive inline resets and Preview Hide', t => {
+    const { window, first, shadow, click, picker } = setup(t, () => '#first');
+    first.style.cssText = 'display:block!important;outline:none!important;box-shadow:none!important';
+    first.getBoundingClientRect = () => first.style.display === 'none'
+        ? { left: 0, top: 0, right: 0, bottom: 0 }
+        : { left: 50, top: 100, right: 250, bottom: 180 };
+    first.dispatchEvent(new window.MouseEvent('mouseover', { bubbles: true }));
+    const hover = shadow().querySelector('.hover-outline');
+    assert.equal(hover.style.display, 'block'); assert.equal(hover.style.width, '200px');
+    first.click(); click('preview-toggle');
+    const selected = shadow().querySelector('.selected-outline:not(.hover-outline)');
+    assert.equal(first.style.display, 'none');
+    assert.equal(selected.style.display, 'block'); assert.equal(selected.style.top, '100px');
+    assert.equal(selected.style.height, '80px');
+    assert.equal(shadow().querySelector('.hover-outline'), null);
+    picker.stop(); assert.equal(first.style.display, 'block');
+    assert.equal(first.style.getPropertyPriority('display'), 'important');
+});
+test('picker: preview frames follow nested scroll and resize without restoring page flow on scroll', async t => {
+    const { window, document, first, shadow, click } = setup(t, () => '#first');
+    const scroller = document.createElement('section'); document.body.appendChild(scroller); scroller.appendChild(first);
+    let top = 100;
+    first.getBoundingClientRect = () => first.style.display === 'none' ? { left: 0, top: 0, right: 0, bottom: 0 }
+        : { left: 50, top, right: 250, bottom: top + 80 };
+    first.click(); click('preview-toggle');
+    const box = shadow().querySelector('.selected-outline');
+    const writes = [];
+    const observer = new window.MutationObserver(records => writes.push(...records)); observer.observe(first, { attributes: true, attributeFilter: ['style'] });
+    scroller.scrollTop = 30; scroller.dispatchEvent(new window.Event('scroll'));
+    await new Promise(resolve => window.requestAnimationFrame(resolve));
+    assert.equal(box.style.top, '70px'); assert.equal(writes.length, 0);
+    top = 130; window.dispatchEvent(new window.Event('resize'));
+    await new Promise(resolve => window.requestAnimationFrame(resolve));
+    assert.equal(box.style.top, '130px'); assert.equal(first.style.display, 'none');
+    observer.disconnect();
+});
 test('impact picker: previews every match, restores display priority, and clears extra outlines on deselection', t => {
     const { first, second, shadow, click, picker } = setup(t);
     first.click();

@@ -56,6 +56,26 @@ test('picker: saving uses shared storage and applies hostname rules immediately'
     assert.match(document.querySelector('#glassveil-injected-style').textContent, /#banner/);
     assert.equal(document.querySelector('#glassveil-picker-root'), null);
 });
+test('picker: waits for user-origin CSS before closing, and retries injection failure', async t => {
+    const { document, chrome, start, shadow } = await fixture(t);
+    const send = chrome.runtime.sendMessage;
+    let fail = true, release;
+    chrome.runtime.sendMessage = async message => {
+        if (message.type !== 'glassveil-user-css') return send(message);
+        if (fail) return { ok: false, error: 'CSS unavailable' };
+        await new Promise(resolve => { release = resolve; });
+        return { ok: true };
+    };
+    start(); document.querySelector('#banner').click(); shadow().querySelector('#preview-toggle').click();
+    shadow().querySelector('#confirm-btn').click(); await settle();
+    assert.ok(shadow()); assert.match(shadow().querySelector('#impact-notice').textContent, /Could not save/);
+    fail = false; shadow().querySelector('#confirm-btn').click(); await settle();
+    assert.ok(shadow()); assert.equal(shadow().querySelector('#confirm-btn').textContent, 'Saving…');
+    assert.equal(document.querySelector('#banner').style.display, 'none');
+    release(); await settle(); await settle();
+    assert.equal(shadow(), undefined);
+    assert.equal(chrome.snapshot().ruleStore.rules['example.com'].length, 1);
+});
 test('bootstrap: legacy rules, disabled sites and cross-page storage events use the current hostname', async t => {
     const { document, chrome } = await fixture(t, {
         rules: { 'example.com': ['#banner'], 'sub.example.com': ['#sponsor'] }, disabledSites: { 'example.com': true }

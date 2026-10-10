@@ -10,7 +10,8 @@ GlassVeil loads directly as a Manifest V3 extension. There is no bundle or build
 | `shared/storage.js` | Versioned structured rule API, legacy migration, stable-ID mutations and worker-serialized access; subscribes to the authoritative ruleStore key. |
 | `content/selector-generator.js` | Selector generation with explicit document, Node, CSS.escape and temporary-class dependencies. Generates, validates and deterministically scores ID/attribute/class/ancestor/positional candidates for exact or similar selection. |
 | `content/selector-impact.js` | Evaluates each selection against the document, isolates invalid candidates, deduplicates matches, and compares reviewed element identities before save. |
-| `content/rule-engine.js` | Applies enabled records and isolates invalid selectors; retains suspend/resume support for internal diagnostics. |
+| `content/rule-engine.js` | Validates enabled selectors, applies the immediate document stylesheet and serializes user-origin stylesheet replacements; retains suspend/resume support for internal diagnostics. |
+| `background/user-css.js` | Inserts/removes USER-origin CSS through the existing scripting permission, scoped to the requesting content document. |
 | `content/rule-diagnostics.js` | Current-document match counts; also retains an internal timed highlight preview with no popup trigger. |
 | `content/picker-state.js` | Owns selection order, active element and session action-history snapshots; accepts an availability predicate, with no DOM listeners or Chrome APIs. |
 | `content/picker-utils.js` | Pure labels, position clamping and temporary-class classification. |
@@ -32,6 +33,8 @@ Definition-only modules publish frozen factory APIs in the extension's isolated 
 - Rule application now parses selectors and CSS rules separately before joining valid CSS. A malformed selector or unterminated CSS comment cannot consume later valid rules. Empty/non-string entries are ignored and duplicate selectors produce one CSS rule.
 - Removing a disconnected active selection now falls back to the remaining selection rather than retaining a detached active element.
 - Preview hides the union of all valid selector matches and restores original inline display values and priorities. Cyan outlines identify selections; amber outlines show additional matches.
+- Blocking also uses USER-origin important CSS so inline important display/reset styles cannot undo saved rules. The document stylesheet remains an immediate fallback. Save waits for user CSS before releasing Preview Hide; injection failures leave the picker available for retry. Rule removal, disable and internal diagnostic suspension remove the corresponding user sheet. The worker uses the sender's document ID to keep delayed updates out of a newly navigated document.
+- Hover and selection frames render inside the picker shadow root, above page CSS. Previewed selections retain their geometry for visible selection feedback; viewport changes refresh that geometry before redrawing.
 
 ## Coverage and remaining feature work
 

@@ -24,9 +24,11 @@ Open <http://127.0.0.1:8765/> in the browser where the unpacked extension is ins
 
 Choose a target scenario, reset the counters, then start the **extension's** picker. Cancel before changing scenarios. During target selection, all four Page activity counters should remain zero and no `#activated` navigation should occur. Cancel and click normally as a positive control: the counters should increase. Refresh/reset before the next run. Saving a fixture rule uses real extension storage for `127.0.0.1`; delete those test rules from the popup afterward so they do not affect later localhost pages.
 
-Scenarios include an ordinary link with nested text, an action button, same-origin and cross-origin iframe ads, a page overlay at maximum z-index, a nested CSS scroll container, and a native modal dialog. In extension mode, select the modal scenario first and use the configured shortcut or toolbar popup to start the picker while the dialog is open.
+Scenarios include an ordinary link with nested text, an action button, same-origin and cross-origin iframe ads, a page overlay at maximum z-index, an ad with inline important CSS, a nested CSS scroll container, and a native modal dialog. In extension mode, select the modal scenario first and use the configured shortcut or toolbar popup to start the picker while the dialog is open.
 
 For layout/input checks without installing the extension, open <http://127.0.0.1:8765/?demo=1> and click **Start demo picker**. This loads the actual picker/selector modules in the page; saving hides objects only in that tab and is cleared on refresh. The demo does **not** test isolated-world injection, Chrome storage, the popup, context-menu integration or extension reloads. Choosing the modal scenario automatically starts its demo picker because the page's start button becomes inert outside the dialog.
+
+The standalone demo uses a document stylesheet, so it cannot validate blocking against inline important styles. Test the **Ad with inline important CSS** scenario with the real extension for saving/persistence; the demo can validate its independent selection frames.
 
 ## Manual checklist
 
@@ -43,6 +45,22 @@ For layout/input checks without installing the extension, open <http://127.0.0.1
 - [ ] Exit with Cancel, Escape and successful Block. Confirm the input surface disappears, previews restore as appropriate, and normal page actions work. Re-enter and repeat.
 - [ ] Start from the popup, shortcut and context menu; reload the extension and page and repeat. Confirm one panel appears and fixture rules can be toggled/deleted normally.
 - [ ] Retry the reported MangaClouds URL when reachable; record the exact ad target, browser/extension version and whether it is an iframe.
+
+## Inline-important ad follow-up
+
+The reported MangaClouds page was reachable on 2026-10-10. DOM inspection found the visible ad rows/containers use inline important display styles and inline `outline: initial !important` resets. These outrank the original document stylesheet and page-class highlights. This is a confirmed failure mechanism; it does not establish that every returning ad is caused by CSS rather than a changed selector or regenerated markup.
+
+Saved rules now also use [Chrome scripting USER-origin CSS](https://developer.chrome.com/docs/extensions/reference/api/scripting#type-CSSInjection), which takes precedence over author inline important declarations. It applies to matching elements inserted later without modifying their inline styles. Hover/selection outlines draw in the picker shadow root; previewed selections keep a frame using geometry captured before hiding.
+
+All 206 automated tests passed, including user-sheet replacement/removal, sender-document targeting, request rejection, rollback on API failure, ordered rule changes, save waiting/retry, inline-reset selection feedback and preview-frame scrolling/resizing. In the real standalone browser fixture, the inline-reset target had no page outline, while the independent hover and selection frames displayed at its full bounds; the selected frame retained those bounds after Preview Hide and page activity stayed zero. Cancel restored the ad. The USER-origin injection API and the follow-up Block/persistence behavior on MangaClouds still need real-extension QA.
+
+After reloading the extension and refreshing the page:
+
+1. On the fixture in **extension mode**, choose **Ad with inline important CSS**, then start picking. Hover must show a dashed cyan frame; selection must show a numbered frame. Repeat with Preview Hide on and off.
+2. Save while Preview Hide is on. The panel must close and the ad must remain hidden. Click **Rewrite / replace protected ad**: the replacement with the same selector must stay hidden despite inline `display:flex !important`.
+3. In the popup, disable the saved rule/site: the ad must return. Re-enable: it must hide. Delete the rule and verify it returns. Refresh the fixture and check the persisted enabled/disabled state; delete fixture-only localhost rules afterward.
+4. Repeat on the left, right and bottom-right MangaClouds ads. If selecting one row hides only that row, use **Select Parent** and review the frame/match count to choose its container. Save, wait 20 seconds, scroll and refresh. Confirm the saved selector still matches if the site changes its ad markup.
+5. Cancel/Escape an unsaved selection: original inline display and priority must return, frames must disappear, and ordinary page interaction must resume.
 
 ## Verification boundaries
 
