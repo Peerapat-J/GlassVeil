@@ -120,13 +120,38 @@
             window.addEventListener(type, guard, { capture: true, passive: false });
         }
 
+        const activeModal = () => {
+            let modals;
+            try { modals = Array.from(document.querySelectorAll("dialog:modal")); }
+            catch { return null; /* Older selector engines. */ }
+            if (modals.length < 2) return modals[0] || null;
+            const containingModal = element => {
+                for (; element; element = element.parentElement) if (modals.includes(element)) return element;
+                return null;
+            };
+            // Only the topmost modal's subtree can hold focus. DOM order does
+            // not tell us which dialog was shown most recently.
+            const focused = containingModal(document.activeElement);
+            if (focused) return focused;
+            // Focus can be absent (e.g. after blur). The native hit test sees the
+            // active dialog or its backdrop and skips inert older dialogs.
+            const points = [[window.innerWidth / 2, window.innerHeight / 2], ...modals.map(dialog => {
+                const rect = dialog.getBoundingClientRect();
+                return [(rect.left + rect.right) / 2, (rect.top + rect.bottom) / 2];
+            })];
+            for (const [x, y] of points) {
+                if (x < 0 || y < 0 || x >= window.innerWidth || y >= window.innerHeight) continue;
+                const modal = containingModal(document.elementFromPoint(x, y));
+                if (modal) return modal;
+            }
+            return null;
+        };
+
         const start = ({ pickerRoot, shadowRoot, pickerPanel }) => {
             pressed = false; finishingPress = false; lastPoint = null; lastHover = null;
             // A top-layer popover outside a modal dialog is still inert. Mount
             // inside the active modal (or fullscreen element) before showing it.
-            let modal = null;
-            try { modal = document.querySelector("dialog:modal"); } catch { /* Older selector engines. */ }
-            const mount = modal || document.fullscreenElement || document.body;
+            const mount = activeModal() || document.fullscreenElement || document.body;
             mount.appendChild(pickerRoot);
             const styles = {
                 position: "fixed", inset: "0", width: "100vw", height: "100vh", margin: "0", padding: "0",

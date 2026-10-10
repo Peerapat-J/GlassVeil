@@ -155,6 +155,8 @@ test('picker input: modal mount stays interactive and cannot be hidden together 
     const ad = f.document.querySelector('#ad'); dialog.appendChild(ad); f.document.body.appendChild(dialog);
     const query = f.document.querySelector.bind(f.document);
     f.document.querySelector = selector => selector === 'dialog:modal' ? dialog : query(selector);
+    const queryAll = f.document.querySelectorAll.bind(f.document);
+    f.document.querySelectorAll = selector => selector === 'dialog:modal' ? [dialog] : queryAll(selector);
     f.picker.start();
     assert.equal(f.root().parentElement, dialog);
     f.fire(f.shield(), 'click');
@@ -165,6 +167,38 @@ test('picker input: modal mount stays interactive and cannot be hidden together 
     f.shadow().querySelector('#preview-toggle').click();
     assert.equal(dialog.style.display, '');
     f.picker.stop(); assert.equal(f.root(), null);
+});
+for (const activeFirst of [false, true]) {
+    test(`picker input: focused top modal wins independently of DOM order (first=${activeFirst})`, t => {
+        const f = setup(t);
+        const older = f.document.createElement('dialog'), active = f.document.createElement('dialog');
+        const ad = f.document.querySelector('#ad'); active.appendChild(ad);
+        const modals = activeFirst ? [active, older] : [older, active];
+        f.document.body.append(...modals); ad.focus();
+        const query = f.document.querySelector.bind(f.document), queryAll = f.document.querySelectorAll.bind(f.document);
+        f.document.querySelector = selector => selector === 'dialog:modal' ? modals[0] : query(selector);
+        f.document.querySelectorAll = selector => selector === 'dialog:modal' ? modals : queryAll(selector);
+        f.picker.start();
+        assert.equal(f.root().parentElement, active);
+        f.fire(f.shield(), 'click');
+        assert.equal(f.shadow().querySelector('#selection-count').textContent, '1 selected');
+        f.shadow().querySelector('#cancel-btn').click();
+        assert.equal(f.root(), null);
+    });
+}
+test('picker input: top modal hit testing works when focus is outside both dialogs', t => {
+    const f = setup(t);
+    const older = f.document.createElement('dialog'), active = f.document.createElement('dialog');
+    f.document.body.append(older, active);
+    const query = f.document.querySelector.bind(f.document), queryAll = f.document.querySelectorAll.bind(f.document);
+    f.document.querySelector = selector => selector === 'dialog:modal' ? older : query(selector);
+    f.document.querySelectorAll = selector => selector === 'dialog:modal' ? [older, active] : queryAll(selector);
+    f.document.elementFromPoint = (x, y) => {
+        assert.equal(x, f.window.innerWidth / 2); assert.equal(y, f.window.innerHeight / 2);
+        return active;
+    };
+    f.picker.start();
+    assert.equal(f.root().parentElement, active);
 });
 
 test('picker input: Escape and undo precede page keyboard handlers, including Escape during panel drag', t => {

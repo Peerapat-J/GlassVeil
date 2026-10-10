@@ -49,7 +49,7 @@
         document.querySelector('#google-anno-sa')?.remove();
         document.querySelector('#root-ad-decoy')?.remove();
         document.querySelector('#nested-scroll')?.remove();
-        document.querySelector('dialog')?.remove();
+        document.querySelectorAll('dialog').forEach(dialog => dialog.remove());
         const value = event.target.value;
         const ids = { link: 'fixture-link', button: 'fixture-button', 'same-frame': 'same-frame', 'cross-frame': 'cross-frame' };
         if (ids[value]) document.getElementById(ids[value]).hidden = false;
@@ -82,6 +82,16 @@
             const dialog = document.createElement('dialog'); dialog.id = 'page-dialog';
             dialog.innerHTML = '<button id="dialog-ad" class="target">Ad inside a modal dialog</button>';
             document.body.appendChild(dialog); dialog.showModal();
+            if (demo) picker.start();
+        }
+        if (['stacked-dialogs', 'reversed-dialogs', 'blurred-dialogs'].includes(value)) {
+            const older = document.createElement('dialog'); older.id = 'older-dialog';
+            older.innerHTML = '<button>Older, inert modal</button>';
+            const active = document.createElement('dialog'); active.id = 'active-dialog';
+            active.innerHTML = '<button id="stacked-modal-ad" class="target">Ad inside the active modal</button>';
+            document.body.append(...(value === 'reversed-dialogs' ? [active, older] : [older, active]));
+            older.showModal(); active.showModal();
+            if (value === 'blurred-dialogs') document.activeElement.blur();
             if (demo) picker.start();
         }
         for (const key of Object.keys(counts)) counts[key] = 0;

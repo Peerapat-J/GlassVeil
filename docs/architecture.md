@@ -36,6 +36,7 @@ Definition-only modules publish frozen factory APIs in the extension's isolated 
 - Blocking also uses USER-origin important CSS so inline important display/reset styles cannot undo saved rules. The document stylesheet remains an immediate fallback. Save waits for user CSS before releasing Preview Hide; injection failures leave the picker available for retry. Rule removal, disable and internal diagnostic suspension remove the corresponding user sheet. The worker uses the sender's document ID to keep delayed updates out of a newly navigated document.
 - Storage reloads and rule/toggle messages await the queued user-sheet update. Rule/toggle messages report style failures to the popup; it shows an error with Retry instead of reporting success. Retry reads current saved settings and synchronizes them without repeating a persisted delete/edit/toggle. Background storage-event failures are logged because those events have no response channel.
 - Hover and selection frames render inside the picker shadow root, above page CSS. Preview Hide hides the frames for previewed matches along with the elements. Turning preview off redraws the frames at current element bounds; scrolling/resizing never restores hidden page content just to draw a frame.
+- When several modal dialogs are open, input mounting uses the modal containing focus, then native hit testing if focus is absent. It does not infer top-layer order from DOM order. The picker mounts inside that active modal so its panel remains interactive.
 
 ## Coverage and remaining feature work
 
