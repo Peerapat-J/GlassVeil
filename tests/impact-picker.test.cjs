@@ -20,7 +20,7 @@ function setup(t, generateSelector = () => '.ad', save = async () => {}, prefere
     const first = document.querySelector('#first'), second = document.querySelector('#second');
     return { window, document, first, second, picker, shadow, click, saved, confirmations: () => confirmations };
 }
-test('picker: independent hover and selection frames survive inline resets and Preview Hide', t => {
+test('picker: inline resets cannot suppress frames, but Preview Hide hides and restores them', t => {
     const { window, first, shadow, click, picker } = setup(t, () => '#first');
     first.style.cssText = 'display:block!important;outline:none!important;box-shadow:none!important';
     first.getBoundingClientRect = () => first.style.display === 'none'
@@ -32,13 +32,16 @@ test('picker: independent hover and selection frames survive inline resets and P
     first.click(); click('preview-toggle');
     const selected = shadow().querySelector('.selected-outline:not(.hover-outline)');
     assert.equal(first.style.display, 'none');
+    assert.equal(selected.style.display, 'none');
+    assert.equal(shadow().querySelector('.hover-outline'), null);
+    click('preview-toggle');
     assert.equal(selected.style.display, 'block'); assert.equal(selected.style.top, '100px');
     assert.equal(selected.style.height, '80px');
-    assert.equal(shadow().querySelector('.hover-outline'), null);
+    click('preview-toggle'); assert.equal(selected.style.display, 'none');
     picker.stop(); assert.equal(first.style.display, 'block');
     assert.equal(first.style.getPropertyPriority('display'), 'important');
 });
-test('picker: preview frames follow nested scroll and resize without restoring page flow on scroll', async t => {
+test('picker: preview frames stay hidden on scroll and resize, then use current geometry when restored', async t => {
     const { window, document, first, shadow, click } = setup(t, () => '#first');
     const scroller = document.createElement('section'); document.body.appendChild(scroller); scroller.appendChild(first);
     let top = 100;
@@ -50,19 +53,26 @@ test('picker: preview frames follow nested scroll and resize without restoring p
     const observer = new window.MutationObserver(records => writes.push(...records)); observer.observe(first, { attributes: true, attributeFilter: ['style'] });
     scroller.scrollTop = 30; scroller.dispatchEvent(new window.Event('scroll'));
     await new Promise(resolve => window.requestAnimationFrame(resolve));
-    assert.equal(box.style.top, '70px'); assert.equal(writes.length, 0);
+    assert.equal(box.style.display, 'none'); assert.equal(writes.length, 0);
     top = 130; window.dispatchEvent(new window.Event('resize'));
     await new Promise(resolve => window.requestAnimationFrame(resolve));
-    assert.equal(box.style.top, '130px'); assert.equal(first.style.display, 'none');
+    assert.equal(box.style.display, 'none'); assert.equal(first.style.display, 'none');
+    assert.equal(writes.length, 0);
+    click('preview-toggle');
+    assert.equal(box.style.display, 'block'); assert.equal(box.style.top, '130px');
     observer.disconnect();
 });
 test('impact picker: previews every match, restores display priority, and clears extra outlines on deselection', t => {
     const { first, second, shadow, click, picker } = setup(t);
+    for (const element of [first, second]) element.getBoundingClientRect = () => ({ left: 50, top: 100, right: 250, bottom: 180 });
     first.click();
     assert.match(shadow().querySelector('#impact-summary').textContent, /hide 2 elements/);
     assert.equal(shadow().querySelectorAll('.impact-outline').length, 1);
+    shadow().querySelectorAll('.selected-outline').forEach(box => assert.equal(box.style.display, 'block'));
     click('preview-toggle'); assert.equal(second.style.display, 'none');
+    shadow().querySelectorAll('.selected-outline').forEach(box => assert.equal(box.style.display, 'none'));
     click('preview-toggle'); assert.equal(second.style.display, 'block'); assert.equal(second.style.getPropertyPriority('display'), 'important');
+    shadow().querySelectorAll('.selected-outline').forEach(box => assert.equal(box.style.display, 'block'));
     first.click(); assert.equal(shadow().querySelectorAll('.impact-outline').length, 0);
     first.click(); click('preview-toggle'); picker.stop();
     assert.equal(first.style.display, ''); assert.equal(second.style.display, 'block');

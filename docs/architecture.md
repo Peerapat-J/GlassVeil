@@ -34,7 +34,7 @@ Definition-only modules publish frozen factory APIs in the extension's isolated 
 - Removing a disconnected active selection now falls back to the remaining selection rather than retaining a detached active element.
 - Preview hides the union of all valid selector matches and restores original inline display values and priorities. Cyan outlines identify selections; amber outlines show additional matches.
 - Blocking also uses USER-origin important CSS so inline important display/reset styles cannot undo saved rules. The document stylesheet remains an immediate fallback. Save waits for user CSS before releasing Preview Hide; injection failures leave the picker available for retry. Rule removal, disable and internal diagnostic suspension remove the corresponding user sheet. The worker uses the sender's document ID to keep delayed updates out of a newly navigated document.
-- Hover and selection frames render inside the picker shadow root, above page CSS. Previewed selections retain their geometry for visible selection feedback; viewport changes refresh that geometry before redrawing.
+- Hover and selection frames render inside the picker shadow root, above page CSS. Preview Hide hides the frames for previewed matches along with the elements. Turning preview off redraws the frames at current element bounds; scrolling/resizing never restores hidden page content just to draw a frame.
 
 ## Coverage and remaining feature work
 

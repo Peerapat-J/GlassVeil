@@ -82,20 +82,10 @@
                     layer.appendChild(box);
                     boxes.set(element, box);
                 }
-                const preview = previewedElements.get(element);
-                const scrollDelta = preview ? preview.scrollers.reduce((delta, snapshot) => ({
-                    x: delta.x + snapshot.element.scrollLeft - snapshot.left,
-                    y: delta.y + snapshot.element.scrollTop - snapshot.top
-                }), { x: 0, y: 0 }) : { x: 0, y: 0 };
-                const rect = preview ? {
-                    left: preview.rect.left - scrollDelta.x - (preview.fixed ? 0 : window.scrollX - preview.scrollX),
-                    right: preview.rect.right - scrollDelta.x - (preview.fixed ? 0 : window.scrollX - preview.scrollX),
-                    top: preview.rect.top - scrollDelta.y - (preview.fixed ? 0 : window.scrollY - preview.scrollY),
-                    bottom: preview.rect.bottom - scrollDelta.y - (preview.fixed ? 0 : window.scrollY - preview.scrollY)
-                } : element.getBoundingClientRect();
+                const rect = element.getBoundingClientRect();
                 const left = Math.max(0, rect.left), top = Math.max(0, rect.top);
                 const right = Math.min(window.innerWidth, rect.right), bottom = Math.min(window.innerHeight, rect.bottom);
-                box.style.display = right > left && bottom > top ? "block" : "none";
+                box.style.display = !previewedElements.has(element) && right > left && bottom > top ? "block" : "none";
                 Object.assign(box.style, { left: `${left}px`, top: `${top}px`, width: `${Math.max(0, right - left)}px`, height: `${Math.max(0, bottom - top)}px` });
                 box.firstChild.textContent = labelFor(index);
             });
@@ -118,16 +108,8 @@
             });
         };
 
-        const handleViewportChange = event => {
+        const handleViewportChange = () => {
             clampPickerPanelToViewport();
-            // Do not restore page-flow previews on scroll: doing so can move the
-            // viewport and trigger another scroll. Resize needs fresh layout.
-            if (event.type === "resize" && previewedElements.size && !saveInFlight) {
-                const elements = Array.from(previewedElements.keys());
-                restorePreview();
-                elements.forEach(previewElement);
-                elements.forEach(element => element.style.setProperty("display", "none", "important"));
-            }
             input.refreshHover();
             scheduleSelectedOutlineSync();
         };
@@ -169,16 +151,8 @@
         const previewElement = (element) => {
             if (!element || previewedElements.has(element)) return;
 
-            let fixed = false;
-            const scrollers = [];
-            for (let ancestor = element; ancestor; ancestor = ancestor.parentElement) {
-                if (ancestor !== element && ancestor !== document.body && ancestor !== document.documentElement) {
-                    scrollers.push({ element: ancestor, left: ancestor.scrollLeft, top: ancestor.scrollTop });
-                }
-                if (window.getComputedStyle(ancestor).position === "fixed") { fixed = true; break; }
-            }
-            previewedElements.set(element, { value: element.style.getPropertyValue("display"), priority: element.style.getPropertyPriority("display"),
-                rect: element.getBoundingClientRect(), scrollX: window.scrollX, scrollY: window.scrollY, fixed, scrollers });
+            previewedElements.set(element, { value: element.style.getPropertyValue("display"), priority: element.style.getPropertyPriority("display") });
+            element.style.setProperty("display", "none", "important");
         };
 
         const isPreviewEnabled = () => {
@@ -194,11 +168,7 @@
             }
             selection.prune();
             currentImpact = analyzeImpact({ elements: selection, generateSelector: generateCurrentSelector, document, pickerRoot });
-            if (isPreviewEnabled()) {
-                // Capture every rectangle before an ancestor preview can collapse it.
-                currentImpact.matches.forEach(previewElement);
-                currentImpact.matches.forEach(element => element.style.setProperty("display", "none", "important"));
-            }
+            if (isPreviewEnabled()) currentImpact.matches.forEach(previewElement);
             return currentImpact;
         };
 
