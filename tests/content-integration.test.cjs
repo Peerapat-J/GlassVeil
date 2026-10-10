@@ -88,6 +88,40 @@ test('bootstrap: legacy rules, disabled sites and cross-page storage events use 
     assert.match(style(), /#sponsor/); assert.doesNotMatch(style(), /#banner/);
     await windowStorage(chrome).resetSite('example.com'); await settle(); assert.equal(style(), '');
 });
+for (const action of ['updateRules', 'toggleBlocker']) {
+    test(`bootstrap: ${action} waits for user CSS and reports failure before a safe retry`, async t => {
+        const { chrome } = await fixture(t, { rules: { 'example.com': ['#banner'] } });
+        const originalSend = chrome.runtime.sendMessage;
+        let release, failure = action === 'updateRules' ? 'CSS insertion failed' : 'CSS removal failed';
+        const attempts = [];
+        chrome.runtime.sendMessage = async message => {
+            if (message.type !== 'glassveil-user-css') return originalSend(message);
+            attempts.push(message);
+            await new Promise(resolve => { release = resolve; });
+            return failure ? { ok: false, error: failure } : { ok: true };
+        };
+        const message = action === 'updateRules' ? { action, rules: ['#sponsor'] } : { action, enabled: false };
+        let response;
+        chrome.runtime.onMessage.emit(message, {}, result => { response = result; });
+        await settle();
+        assert.equal(response, undefined);
+        assert.equal(attempts.length, 1);
+        assert.match(attempts[0].previousCSS, /#banner/);
+        if (action === 'updateRules') assert.match(attempts[0].css, /#sponsor/);
+        else assert.equal(attempts[0].css, '');
+        release(); await settle();
+        assert.equal(response.status, 'error');
+        assert.equal(response.error, failure);
+        failure = ''; response = undefined;
+        chrome.runtime.onMessage.emit(message, {}, result => { response = result; });
+        await settle();
+        assert.equal(response, undefined);
+        assert.equal(attempts.length, 2);
+        assert.equal(attempts[1].previousCSS, attempts[0].previousCSS);
+        release(); await settle();
+        assert.equal(response.status, action === 'updateRules' ? 'rules_updated' : 'blocker_toggled');
+    });
+}
 test('picker undo: restores parent child, deselection, outlines, active selector and preview', async t => {
     const { document, start, shadow, chrome } = await fixture(t);
     const child = document.querySelector('#banner'), parent = document.querySelector('#parent');

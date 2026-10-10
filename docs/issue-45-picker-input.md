@@ -80,6 +80,12 @@ After reloading the unpacked extension and refreshing the page:
 4. To hide the complete ad including its close button and outer frame, choose **Select Parent** and review `#google-anno-sa` before Block. Verify the entire container stays hidden after refresh.
 5. For a controlled comparison, run the new fixture scenario in extension mode and repeat steps 1–3. Delete any localhost test rules afterward.
 
+## Popup stylesheet failures (PR review)
+
+Rule/toggle responses now wait for the user stylesheet. A failed insertion/removal returns an error to the popup, which offers Retry; Retry synchronizes the already-saved settings without repeating the mutation. Automated regressions delay and reject both message paths, verify the previous sheet is retained for retry, and check popup errors/retry without a second storage write or content reinjection. Browser extension API failures remain simulated in these tests.
+
+Manual extension checks: edit a rule, disable/re-enable it, delete it, and toggle the site blocker on an inline-important ad. Check the page reflects each completed action. If a style update fails, verify an Error notice and Retry appear; retry must apply the saved settings without deleting another rule or repeating the edit/toggle. Refresh and confirm persisted state. Keep localhost test rules disposable.
+
 ## Verification boundaries
 
 Checked on 2026-10-10 with the standalone demo in a real browser: ordinary link selection, middle/double-click suppression, same-origin and cross-origin iframe selection, iframe Preview Hide/Cancel, modal-child selection and parent rejection, maximum-z-index overlay selection/save cleanup, panel dragging, nested scrolling (scrollTop advanced to 720), and Escape followed by a normal link click. Page/iframe activity counters remained zero while selecting; the normal click after Escape incremented window/document/target counters and navigated to `#activated` as the positive control.

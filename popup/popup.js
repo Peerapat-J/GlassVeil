@@ -164,8 +164,12 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Retry synchronization reads current storage; it never repeats a delete/reset.
     const syncSite = async () => {
         const site = await readSite();
-        await tabAccess.send(currentTab, { action: "updateRules", rules: site.rules });
-        await tabAccess.send(currentTab, { action: "toggleBlocker", enabled: site.enabled });
+        for (const message of [{ action: "updateRules", rules: site.rules }, { action: "toggleBlocker", enabled: site.enabled }]) {
+            const result = await tabAccess.send(currentTab, message);
+            if (result?.status === "error") {
+                throw Object.assign(new Error(result.error || "Could not apply blocking styles"), { kind: "styles" });
+            }
+        }
         await refreshDiagnostics();
     };
     const handleFailure = (error, retry) => {
@@ -174,9 +178,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         } else {
             badge.textContent = "Error"; badge.classList.add("disabled");
             rulesList.querySelectorAll(".rule-status").forEach(status => { if (status.textContent === "Checking…") status.textContent = "Count unavailable"; });
-            showNotice(error.kind === "connection" ? error.message : (error.message || "Could not load or save site settings. Reload the controls and try again."),
-                error.kind === "connection" ? () => runAction(retry, retry) : loadCurrentSite,
-                error.kind === "connection" ? "Retry" : "Reload controls");
+            const canRetry = ["connection", "styles"].includes(error.kind);
+            showNotice(error.message || "Could not load or save site settings. Reload the controls and try again.",
+                canRetry ? () => runAction(retry, retry) : loadCurrentSite,
+                canRetry ? "Retry" : "Reload controls");
         }
     };
     const runAction = async (action, retry = syncSite) => {

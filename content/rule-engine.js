@@ -13,7 +13,7 @@
                 await replaceUserCSS({ css, previousCSS: userCSS });
                 userCSS = css;
             });
-            // Callers that save rules use flush() to surface failures in the UI.
+            // Runtime callers use flush() before reporting success to the UI.
             pending.catch(error => console.error("[GlassVeil] Could not apply user CSS:", error));
         };
 

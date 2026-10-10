@@ -21,6 +21,10 @@
     const diagnostics = globalThis.GlassVeilRuleDiagnostics.createDiagnostics({ document, window, ruleEngine });
     let activeRules = [];
     let isBlockerEnabled = true;
+    const applyCurrentRules = async () => {
+        ruleEngine.apply(activeRules, isBlockerEnabled);
+        await ruleEngine.flush();
+    };
     const picker = globalThis.GlassVeilPicker.createPicker({
         document, window, generateSelector,
         utils: globalThis.GlassVeilPickerUtils,
@@ -34,24 +38,22 @@
         savePreviewPreference: enabled => chrome.storage.local.set({ pickerPreviewEnabled: enabled }),
         saveSelectors: async selectors => {
             activeRules = (await storage.appendSelectors(currentDomain, selectors, window.location.href)).rules;
-            ruleEngine.apply(activeRules, isBlockerEnabled);
-            await ruleEngine.flush();
+            await applyCurrentRules();
         }
     });
 
     const applyRulesFromStorage = async () => {
-        try {
-            const site = await storage.readSite(currentDomain);
-            activeRules = site.rules;
-            isBlockerEnabled = site.enabled;
-            ruleEngine.apply(activeRules, isBlockerEnabled);
-        } catch (err) {
-            console.error("[GlassVeil] Failed to load rules from storage:", err);
-        }
+        const site = await storage.readSite(currentDomain);
+        activeRules = site.rules;
+        isBlockerEnabled = site.enabled;
+        await applyCurrentRules();
     };
+    const reloadRules = () => applyRulesFromStorage().catch(error => {
+        console.error("[GlassVeil] Failed to load or apply stored rules:", error);
+    });
 
     window.glassVeilInjected = true;
-    storage.subscribe(applyRulesFromStorage);
+    storage.subscribe(reloadRules);
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.action === "startPicker") {
             diagnostics.stop();
@@ -65,16 +67,14 @@
             sendResponse(diagnostics.test(message.selector));
         } else if (message.action === "stopRuleTest") {
             diagnostics.stop(); sendResponse({ status: "stopped" });
-        } else if (message.action === "toggleBlocker") {
-            isBlockerEnabled = message.enabled;
-            ruleEngine.apply(activeRules, isBlockerEnabled);
-            sendResponse({ status: "blocker_toggled" });
-        } else if (message.action === "updateRules") {
-            activeRules = message.rules;
-            ruleEngine.apply(activeRules, isBlockerEnabled);
-            sendResponse({ status: "rules_updated" });
+        } else if (message.action === "toggleBlocker" || message.action === "updateRules") {
+            if (message.action === "toggleBlocker") isBlockerEnabled = message.enabled;
+            else activeRules = message.rules;
+            applyCurrentRules().then(
+                () => sendResponse({ status: message.action === "toggleBlocker" ? "blocker_toggled" : "rules_updated" }),
+                error => sendResponse({ status: "error", error: error.message || "Could not apply blocking styles" }));
         }
         return true;
     });
-    applyRulesFromStorage();
+    reloadRules();
 })();
