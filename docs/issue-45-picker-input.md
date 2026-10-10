@@ -64,6 +64,22 @@ After reloading the extension and refreshing the page:
 4. Repeat on the left, right and bottom-right MangaClouds ads. If selecting one row hides only that row, use **Select Parent** and review the frame/match count to choose its container. Save, wait 20 seconds, scroll and refresh. Confirm the saved selector still matches if the site changes its ad markup.
 5. Cancel/Escape an unsaved selection: original inline display and priority must return, frames must disappear, and ordinary page interaction must resume.
 
+## Root-level ad selector follow-up
+
+On the Air Gear page (<https://www.mangaclouds.com/en/manga/air-gear-en.html>), the `#google-anno-sa` ad is appended directly under html. Its unnamed interior span and close-button span share that container. The old semantic candidate `#google-anno-sa > span` matched both; its unanchored positional path also matched other page spans, and traversal stopped before html. This produced an empty selector. Invalid selections are intentionally excluded from preview, which explains the remaining outline; selecting the outer container still worked.
+
+The positional fallback now tries stable ancestor anchors and, if needed, an absolute `:root` path. The interior generates `#google-anno-sa > span:nth-of-type(1)` in Exact mode without selecting its sibling or widening to the whole container. Regression tests reproduced the empty-selector failure before the fix, then verified unique matching, an unrelated sibling insertion, the no-ID root fallback, Preview Hide/frame restoration and the selector passed to save. `npm test` passes 209 tests.
+
+On 2026-10-11, the standalone browser scenario **Ad directly under html (two spans)** showed one valid match for the interior, no page activity, and no interior/frame during Preview Hide. Disabling preview restored both; Cancel restored the element and removed the picker. This verifies the actual picker modules in a browser; installed-extension storage/USER-origin CSS persistence on this live ad remains manual QA.
+
+After reloading the unpacked extension and refreshing the page:
+
+1. Remove the old unsavable selection or start a fresh picker. Select the white interior of the bottom/right anchor in **Exact element** mode. It should show one valid selector rather than **No selector**.
+2. Enable Preview Hide: both the selected interior and its cyan frame should disappear. Its unselected sibling/outer frame may remain. Disable preview: the interior and numbered frame should return. Repeat and Cancel; unsaved content should return.
+3. Select that interior again and Block with preview enabled. It should stay hidden after the panel closes, after scrolling/waiting, and after refreshing the page. Check the popup rule can be disabled, re-enabled and deleted.
+4. To hide the complete ad including its close button and outer frame, choose **Select Parent** and review `#google-anno-sa` before Block. Verify the entire container stays hidden after refresh.
+5. For a controlled comparison, run the new fixture scenario in extension mode and repeat steps 1–3. Delete any localhost test rules afterward.
+
 ## Verification boundaries
 
 Checked on 2026-10-10 with the standalone demo in a real browser: ordinary link selection, middle/double-click suppression, same-origin and cross-origin iframe selection, iframe Preview Hide/Cancel, modal-child selection and parent rejection, maximum-z-index overlay selection/save cleanup, panel dragging, nested scrolling (scrollTop advanced to 720), and Escape followed by a normal link click. Page/iframe activity counters remained zero while selecting; the normal click after Escape incremented window/document/target counters and navigated to `#activated` as the positive control.

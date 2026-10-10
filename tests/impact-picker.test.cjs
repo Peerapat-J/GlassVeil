@@ -7,6 +7,7 @@ const { createSelectionState } = require('../content/picker-state.js');
 const { createPickerUI } = require('../content/picker-ui.js');
 const { createPickerInput } = require('../content/picker-input.js');
 const { analyzeImpact, sameImpact } = require('../content/selector-impact.js');
+const { createSelectorGenerator } = require('../content/selector-generator.js');
 function setup(t, generateSelector = () => '.ad', save = async () => {}, preferences = {}) {
     const window = createDOM(t, '<div class="ad" id="first"></div><div class="ad" id="second" style="display: block !important"></div><p id="keep"></p>');
     const document = window.document, saved = [];
@@ -40,6 +41,35 @@ test('picker: inline resets cannot suppress frames, but Preview Hide hides and r
     click('preview-toggle'); assert.equal(selected.style.display, 'none');
     picker.stop(); assert.equal(first.style.display, 'block');
     assert.equal(first.style.getPropertyPriority('display'), 'important');
+});
+test('picker: html-child ad interior previews without a stale frame and saves its exact selector', async t => {
+    let generate;
+    const fixture = setup(t, (element, options) => generate(element, options));
+    const { window, document, first, shadow, click, saved } = fixture;
+    generate = createSelectorGenerator({ document, Node: window.Node, CSS: window.CSS,
+        isPickerStateClass: utils.isPickerStateClass });
+    first.innerHTML = '<span></span><span></span>';
+    const ad = document.createElement('div'); ad.id = 'google-anno-sa';
+    ad.innerHTML = '<span style="display:inline!important"><span></span><span></span></span><span></span>';
+    document.documentElement.append(ad);
+    const target = ad.firstElementChild;
+    target.getBoundingClientRect = () => ({ left: 50, top: 100, right: 250, bottom: 180 });
+    target.click();
+    assert.match(shadow().querySelector('#impact-summary').textContent, /hide 1 element/);
+    assert.doesNotMatch(shadow().textContent, /No selector|Invalid selector/);
+    const frame = shadow().querySelector('.selected-outline');
+    assert.equal(frame.style.display, 'block');
+    click('preview-toggle');
+    assert.equal(target.style.display, 'none');
+    assert.equal(frame.style.display, 'none');
+    assert.equal(ad.lastElementChild.style.display, '');
+    click('preview-toggle');
+    assert.equal(target.style.display, 'inline');
+    assert.equal(target.style.getPropertyPriority('display'), 'important');
+    assert.equal(frame.style.display, 'block');
+    click('preview-toggle'); click('confirm-btn'); await settle();
+    assert.deepEqual(saved, [['#google-anno-sa > span:nth-of-type(1)']]);
+    assert.equal(shadow(), undefined);
 });
 test('picker: preview frames stay hidden on scroll and resize, then use current geometry when restored', async t => {
     const { window, document, first, shadow, click } = setup(t, () => '#first');

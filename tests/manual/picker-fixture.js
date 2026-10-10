@@ -46,6 +46,8 @@
         document.querySelectorAll('.target').forEach(element => { element.hidden = true; element.style.removeProperty('display'); });
         document.querySelector('.stage-overlay')?.remove();
         document.querySelector('#protected-ad')?.remove();
+        document.querySelector('#google-anno-sa')?.remove();
+        document.querySelector('#root-ad-decoy')?.remove();
         document.querySelector('#nested-scroll')?.remove();
         document.querySelector('dialog')?.remove();
         const value = event.target.value;
@@ -60,6 +62,15 @@
             ad.textContent = 'Ad with display / outline reset inline !important';
             ad.style.cssText = 'position:fixed;inset:200px 24px 140px;display:flex!important;outline:none!important;box-shadow:none!important;background:#fff4cc;align-items:center;justify-content:center;cursor:pointer';
             document.body.appendChild(ad);
+        }
+        if (value === 'root-ad') {
+            const decoy = document.createElement('div'); decoy.id = 'root-ad-decoy';
+            decoy.hidden = true; decoy.innerHTML = '<span></span><span></span>';
+            document.body.prepend(decoy);
+            const ad = document.createElement('div'); ad.id = 'google-anno-sa';
+            ad.style.cssText = 'position:fixed;inset:200px 24px 140px;padding:24px;border:3px solid #b78600;background:#fff4cc';
+            ad.innerHTML = '<span style="display:block!important;outline:none!important;cursor:pointer;height:80%;background:white;padding:16px">Ad interior: select this white area</span><span style="display:block">Separate sibling: should remain visible</span>';
+            document.documentElement.append(ad);
         }
         if (value === 'nested') {
             const scroller = document.createElement('div'); scroller.id = 'nested-scroll';
