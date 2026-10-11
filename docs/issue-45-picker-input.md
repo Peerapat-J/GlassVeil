@@ -117,3 +117,18 @@ The real unpacked-extension workflow (isolated-world listener ordering, popup/co
 The input guards are installed once when the picker factory is created and remain dormant between sessions. Re-registering on each start would put them after the page's existing window listeners. Stopping releases the session's DOM references and removes its root/shield with the picker. If Escape interrupts a held press, the guard consumes that gesture's remaining release/click before allowing fresh interaction.
 
 An extension injected into an already-loaded page cannot retroactively outrank earlier window capture listeners. Refresh the page after extension reload for this guarantee. The shield is a manual top-layer popover where available, with maximum-z-index fallback; it mounts inside an existing modal/fullscreen element to remain interactive. Rules that include an ancestor containing the picker are rejected so Preview Hide cannot hide the picker itself. Shadow-root contents and individual cross-origin iframe contents remain unsupported. General popup/redirect blocking outside a picker session belongs to #4.
+
+
+## Picker save versus apply failures
+
+After persistence succeeds, a USER-sheet failure now reports **Rules saved**, explains that closing leaves them enabled, and offers **Retry applying** / **Close**. Selection edits are locked; preview can still be toggled. Retry only applies current saved rules and does not repeat `appendSelectors`. An actual persistence failure retains **Could not save**, **Retry save** and **Cancel**.
+
+Automated regressions reject style application after saving, delay a successful retry, verify only one append, and check Close followed by fresh-page loading. They also check locked selection edits and that preview toggles retain the committed-save notice. Generic save-failure regressions still cover editable retry.
+
+Manual extension checklist (API failures currently simulated in tests):
+
+- [ ] Save an inline-important fixture ad with USER-style application failing after storage succeeds. Verify **Rules saved**, **Retry applying** and **Close**; the notice must explain that saved rules remain enabled.
+- [ ] Toggle preview; the notice must remain. Selection removal, Undo, parent selection and precision edits must stay disabled.
+- [ ] Restore style application and retry. Verify the ad hides, the picker closes, and the stored rule ID/count is unchanged.
+- [ ] Repeat the failure and choose Close or Escape. Reload the page; the saved rule must apply, consistent with the notice.
+- [ ] Fail persistence instead: verify **Could not save** / **Retry save**, then Cancel and reload. No new rule should be stored. Remove disposable localhost rules afterward.

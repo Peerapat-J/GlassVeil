@@ -2,7 +2,7 @@
 (function (root) {
     "use strict";
 
-    const createPicker = ({ window, document, generateSelector, saveSelectors, utils, createSelectionState, createPickerUI, createPickerInput, analyzeImpact, sameImpact, iconUrl,
+    const createPicker = ({ window, document, generateSelector, saveSelectors, applySavedRules, utils, createSelectionState, createPickerUI, createPickerInput, analyzeImpact, sameImpact, iconUrl,
         loadPreviewPreference = async () => null, savePreviewPreference = async () => {} }) => {
         const { formatSelectedOutlineLabel, clampPanelPosition, formatSelectionSummary } = utils;
         let isPickerActive = false;
@@ -17,6 +17,7 @@
         let currentImpact = null;
         let renderedSelection = new Set();
         let saveInFlight = false;
+        let savedSelection = false;
         let precision = "exact";
         let previewEnabled = false;
         let previewRevision = 0;
@@ -31,7 +32,7 @@
         const input = createPickerInput({ window, document,
             onHover: element => {
                 if (hoveredElement) handleMouseOut({ target: hoveredElement });
-                if (element && !saveInFlight) handleMouseOver({ target: element });
+                if (element && !saveInFlight && !savedSelection) handleMouseOver({ target: element });
             },
             onSelect: element => handleElementClick(element),
             onKeyDown: event => handleKeyDown(event)
@@ -205,10 +206,10 @@
                 remove.type = "button"; remove.className = "remove-selection"; remove.textContent = "×";
                 remove.title = "Remove selection";
                 remove.setAttribute("aria-label", `Remove selection ${index + 1}: ${entry.selector || "No selector"}`);
-                remove.disabled = saveInFlight;
+                remove.disabled = saveInFlight || savedSelection;
                 remove.addEventListener("click", event => {
                     event.stopPropagation();
-                    if (saveInFlight) return;
+                    if (saveInFlight || savedSelection) return;
                     selection.delete(element);
                     element.classList.remove("glassveil-picker-hovered", "glassveil-picker-selected");
                     if (hoveredElement === element) hoveredElement = null;
@@ -258,6 +259,7 @@
 
             if (parentBtn) {
                 parentBtn.style.display = selection.active ? "block" : "none";
+                parentBtn.disabled = saveInFlight || savedSelection;
             }
 
             if (previewToggle) {
@@ -268,14 +270,17 @@
             }
 
             if (confirmBtn) {
-                confirmBtn.style.display = hasSelection ? "block" : "none";
-                shadowRoot.getElementById("precision-mode").disabled = saveInFlight;
-                confirmBtn.disabled = saveInFlight || currentImpact.selectors.length === 0;
-                confirmBtn.textContent = saveInFlight ? "Saving…" : `Block ${currentImpact.skipped ? "valid " : ""}(${currentImpact.total})`;
+                confirmBtn.style.display = hasSelection || savedSelection ? "block" : "none";
+                shadowRoot.getElementById("precision-mode").disabled = saveInFlight || savedSelection;
+                confirmBtn.disabled = saveInFlight || (!savedSelection && currentImpact.selectors.length === 0);
+                confirmBtn.textContent = saveInFlight ? (savedSelection ? "Applying…" : "Saving…") : savedSelection ? "Retry applying" : `Block ${currentImpact.skipped ? "valid " : ""}(${currentImpact.total})`;
             }
 
-            shadowRoot.getElementById("undo-btn").disabled = saveInFlight || !selection.canUndo;
-            shadowRoot.getElementById("impact-refresh").disabled = saveInFlight || !hasSelection;
+            shadowRoot.getElementById("undo-btn").disabled = saveInFlight || savedSelection || !selection.canUndo;
+            shadowRoot.getElementById("impact-refresh").disabled = saveInFlight || savedSelection || !hasSelection;
+            shadowRoot.getElementById("cancel-btn").textContent = savedSelection ? "Close" : "Cancel";
+            if (savedSelection) shadowRoot.getElementById("impact-notice").textContent =
+                "Rules saved, but could not finish hiding them. Retry applying or close; saved rules remain enabled.";
             syncSelectedOutlines();
             clampPickerPanelToViewport();
         };
@@ -284,6 +289,7 @@
             if (isPickerActive || saveInFlight) return;
             isPickerActive = true;
             precision = "exact";
+            savedSelection = false;
             selection.clear();
             hoveredElement = null;
             previewedElements.clear();
@@ -297,9 +303,9 @@
             pickerPanel = createPickerUI({
                 document, window, shadowRoot, clampPanelPosition, iconUrl,
                 onPrecisionChange: value => {
-                    if (!saveInFlight) { precision = value === "similar" ? "similar" : "exact"; updateSelectionControls(); }
+                    if (!saveInFlight && !savedSelection) { precision = value === "similar" ? "similar" : "exact"; updateSelectionControls(); }
                 },
-                onRefresh: () => { if (!saveInFlight) updateSelectionControls(); },
+                onRefresh: () => { if (!saveInFlight && !savedSelection) updateSelectionControls(); },
                 onUndo: handleUndo,
                 onCancel: stopPicker,
                 onSelectParent: handleSelectParent,
@@ -412,7 +418,7 @@
 
         // Click handler to toggle one element in the current selection
         const handleElementClick = targetElement => {
-            if (!isPickerActive || saveInFlight) return;
+            if (!isPickerActive || saveInFlight || savedSelection) return;
 
             if (hoveredElement === targetElement) {
                 targetElement.classList.remove("glassveil-picker-hovered");
@@ -449,7 +455,7 @@
         };
 
         const handleUndo = (e) => {
-            if (!isPickerActive || saveInFlight) return false;
+            if (!isPickerActive || saveInFlight || savedSelection) return false;
             const previous = Array.from(selection);
             const undone = selection.undo();
             previous.forEach(element => element.classList.remove("glassveil-picker-hovered", "glassveil-picker-selected"));
@@ -464,7 +470,7 @@
         // Action Bar Controller functions
         const handleSelectParent = (e) => {
             e.stopPropagation();
-            if (!selection.active || saveInFlight) return;
+            if (!selection.active || saveInFlight || savedSelection) return;
 
             const currentElement = selection.active;
             if (!isAvailable(currentElement)) { updateSelectionControls(); return; }
@@ -500,16 +506,16 @@
 
         const handleConfirmBlock = async (e) => {
             e.stopPropagation();
-            if (selection.size === 0 || saveInFlight) return;
+            if ((!savedSelection && selection.size === 0) || saveInFlight) return;
             const previous = currentImpact;
             updateSelectionControls();
             const reviewed = currentImpact;
-            if (!reviewed.selectors.length) return;
+            if (!savedSelection && !reviewed.selectors.length) return;
             const changed = () => {
                 shadowRoot.getElementById("impact-notice").textContent = "The page changed. Review the updated matches and click Block again.";
             };
-            if (!sameImpact(previous, reviewed)) { changed(); return; }
-            if (reviewed.requiresConfirmation) {
+            if (!savedSelection && !sameImpact(previous, reviewed)) { changed(); return; }
+            if (!savedSelection && reviewed.requiresConfirmation) {
                 const accepted = window.confirm(`These rules will also hide ${reviewed.additionalMatches.size} ${reviewed.additionalMatches.size === 1 ? "element" : "elements"} you did not select. Save these rules?`);
                 if (!accepted) return;
                 updateSelectionControls();
@@ -522,20 +528,21 @@
             shadowRoot.getElementById("impact-refresh").disabled = true;
             shadowRoot.getElementById("preview-toggle").disabled = true;
             shadowRoot.getElementById("precision-mode").disabled = true;
-            button.disabled = true; button.textContent = "Saving…";
+            button.disabled = true; button.textContent = savedSelection ? "Applying…" : "Saving…";
             try {
-                await saveSelectors(reviewed.selectors);
+                if (savedSelection) await applySavedRules();
+                else await saveSelectors(reviewed.selectors);
                 stopPicker();
             } catch (err) {
                 console.error("[GlassVeil] Error saving/applying rules:", err);
+                savedSelection ||= err.rulesSaved === true;
+                saveInFlight = false;
                 if (shadowRoot) {
-                    shadowRoot.querySelectorAll(".remove-selection").forEach(button => { button.disabled = false; });
-                    shadowRoot.getElementById("undo-btn").disabled = !selection.canUndo;
-                    shadowRoot.getElementById("impact-refresh").disabled = false;
-                    shadowRoot.getElementById("preview-toggle").disabled = false;
-                    shadowRoot.getElementById("precision-mode").disabled = false;
-                    button.disabled = false; button.textContent = "Retry save";
-                    shadowRoot.getElementById("impact-notice").textContent = "Could not save the rules. Please try again.";
+                    updateSelectionControls();
+                    if (!savedSelection) {
+                        button.textContent = "Retry save";
+                        shadowRoot.getElementById("impact-notice").textContent = "Could not save the rules. Please try again.";
+                    }
                 }
             } finally {
                 saveInFlight = false;

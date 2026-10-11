@@ -17,7 +17,7 @@ GlassVeil loads directly as a Manifest V3 extension. There is no bundle or build
 | `content/picker-utils.js` | Pure labels, position clamping and temporary-class classification. |
 | `content/picker-ui.js` | Shadow DOM panel markup/styles and pointer dragging; accepts callbacks instead of saving rules itself. |
 | `content/picker-input.js` | Early window capture guards, transparent input shield, top-layer placement and document hit testing; delegates hover, selection and keyboard actions. |
-| `content/picker.js` | Picker lifecycle, page events, preview restoration, selection outlines and interaction between state and UI. Saving is an injected callback. |
+| `content/picker.js` | Picker lifecycle, page events, preview restoration, selection outlines and interaction between state and UI. Save and apply-only retry are injected callbacks. A committed save with failed style application locks selection edits and offers Retry applying / Close. |
 | `popup/popup.js` | Current-site controls, loading/unsupported/error states and retry; delegates storage and tab operations. |
 | `shared/tab-access.js` | Shared popup/service-worker URL capability checks, current-tab verification and manifest-based fallback injection. |
 | `popup/metadata.js` | Reads installed version, active command binding and platform; formats shortcut display without using suggested defaults. |

@@ -56,11 +56,12 @@ test('picker: saving uses shared storage and applies hostname rules immediately'
     assert.match(document.querySelector('#glassveil-injected-style').textContent, /#banner/);
     assert.equal(document.querySelector('#glassveil-picker-root'), null);
 });
-test('picker: waits for user-origin CSS before closing, and retries injection failure', async t => {
+test('picker: reports committed rules on apply failure and retries without another save', async t => {
     const { document, chrome, start, shadow } = await fixture(t);
     const send = chrome.runtime.sendMessage;
-    let fail = true, release;
+    let fail = true, release, appends = 0;
     chrome.runtime.sendMessage = async message => {
+        if (message.type === 'glassveil-storage' && message.method === 'appendSelectors') appends++;
         if (message.type !== 'glassveil-user-css') return send(message);
         if (fail) return { ok: false, error: 'CSS unavailable' };
         await new Promise(resolve => { release = resolve; });
@@ -68,13 +69,46 @@ test('picker: waits for user-origin CSS before closing, and retries injection fa
     };
     await start(); document.querySelector('#banner').click(); shadow().querySelector('#preview-toggle').click();
     shadow().querySelector('#confirm-btn').click(); await settle();
-    assert.ok(shadow()); assert.match(shadow().querySelector('#impact-notice').textContent, /Could not save/);
+    assert.ok(shadow()); assert.match(shadow().querySelector('#impact-notice').textContent, /Rules saved.*remain enabled/);
+    assert.equal(shadow().querySelector('#confirm-btn').textContent, 'Retry applying');
+    assert.equal(shadow().querySelector('#cancel-btn').textContent, 'Close');
+    assert.equal(chrome.snapshot().ruleStore.rules['example.com'].length, 1);
+    assert.equal(appends, 1);
+    const beforeRetry = appends;
     fail = false; shadow().querySelector('#confirm-btn').click(); await settle();
-    assert.ok(shadow()); assert.equal(shadow().querySelector('#confirm-btn').textContent, 'Saving…');
+    assert.ok(shadow()); assert.equal(shadow().querySelector('#confirm-btn').textContent, 'Applying…');
+    assert.equal(appends, beforeRetry);
     assert.equal(document.querySelector('#banner').style.display, 'none');
     release(); await settle(); await settle();
     assert.equal(shadow(), undefined);
     assert.equal(chrome.snapshot().ruleStore.rules['example.com'].length, 1);
+});
+test('picker: closing an apply failure keeps only the clearly reported saved selection', async t => {
+    const { document, chrome, start, shadow } = await fixture(t);
+    const send = chrome.runtime.sendMessage;
+    chrome.runtime.sendMessage = message => message.type === 'glassveil-user-css'
+        ? Promise.resolve({ ok: false, error: 'CSS unavailable' }) : send(message);
+    await start(); document.querySelector('#banner').click();
+    shadow().querySelector('#confirm-btn').click(); await settle();
+    assert.match(shadow().querySelector('#impact-notice').textContent, /Rules saved.*remain enabled/);
+    document.querySelector('#sponsor').click();
+    shadow().querySelector('#parent-btn').click();
+    assert.equal(shadow().querySelector('#selection-count').textContent, '1 selected');
+    for (const id of ['precision-mode', 'undo-btn', 'impact-refresh', 'parent-btn']) {
+        assert.equal(shadow().querySelector(`#${id}`).disabled, true, id);
+    }
+    document.querySelector('#banner').remove(); // Retry remains available if the page replaces the original target.
+    shadow().querySelector('#preview-toggle').click();
+    assert.equal(shadow().querySelector('#confirm-btn').style.display, 'block');
+    assert.match(shadow().querySelector('#impact-notice').textContent, /Rules saved.*remain enabled/);
+    assert.equal(shadow().querySelector('#confirm-btn').textContent, 'Retry applying');
+    shadow().querySelector('#cancel-btn').click();
+    assert.equal(shadow(), undefined);
+    assert.deepEqual((await windowStorage(chrome).readSite('example.com')).rules.map(rule => rule.selector), ['#banner']);
+    // A fresh page reads the committed rules, as the Close notice promised.
+    const fresh = await fixture(t, chrome.snapshot());
+    assert.match(fresh.document.querySelector('#glassveil-injected-style').textContent, /#banner/);
+    assert.doesNotMatch(fresh.document.querySelector('#glassveil-injected-style').textContent, /#sponsor/);
 });
 test('bootstrap: legacy rules, disabled sites and cross-page storage events use the current hostname', async t => {
     const { document, chrome } = await fixture(t, {

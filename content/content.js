@@ -38,8 +38,13 @@
         savePreviewPreference: enabled => chrome.storage.local.set({ pickerPreviewEnabled: enabled }),
         saveSelectors: async selectors => {
             activeRules = (await storage.appendSelectors(currentDomain, selectors, window.location.href)).rules;
-            await applyCurrentRules();
-        }
+            try { await applyCurrentRules(); }
+            catch (error) {
+                // Persistence already committed; retries must only apply the saved state.
+                throw Object.assign(new Error(error.message), { rulesSaved: true });
+            }
+        },
+        applySavedRules: applyCurrentRules
     });
 
     const applyRulesFromStorage = async () => {
