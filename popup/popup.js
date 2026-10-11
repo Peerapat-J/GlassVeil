@@ -7,6 +7,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const tabAccess = globalThis.GlassVeilTabAccess.createTabAccess(chrome);
     let siteRecords = [];
     let currentTab = null, currentDomain = "", supported = false, busy = false, retryAction = null;
+    const sendToPage = async message => {
+        const response = await tabAccess.send(currentTab, message);
+        if (response?.status === "error") {
+            throw Object.assign(new Error(response.error || "Could not apply blocking styles"), { kind: "styles" });
+        }
+        return response;
+    };
     let recovery = null, recoveryTimer = null, recoveryCountdown = null;
     const clearRecovery = (message = "") => {
         window.clearTimeout(recoveryTimer); recoveryTimer = null; recovery = null;
@@ -79,7 +86,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         updateControls();
     };
     const refreshDiagnostics = async () => {
-        const response = await tabAccess.send(currentTab, { action: "inspectRules", rules: siteRecords });
+        const response = await sendToPage({ action: "inspectRules", rules: siteRecords });
         if (!siteRecords.length) return;
         for (const item of response.rules) {
             const row = Array.from(rulesList.children).find(row => row.dataset.ruleId === item.id);
@@ -133,7 +140,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 form.addEventListener("submit", event => {
                     event.preventDefault(); const selector = input.value.trim();
                     runAction(async () => {
-                        const response = await tabAccess.send(currentTab, { action: "inspectRules", rules: [{ id: rule.id, selector }] });
+                        const response = await sendToPage({ action: "inspectRules", rules: [{ id: rule.id, selector }] });
                         const result = response.rules[0];
                         if (result.status === "invalid") { showNotice("This selector is invalid. Correct it before saving."); return; }
                         if (result.count > 1 && !window.confirm(`This rule matches ${result.count} elements. Save this selector?`)) return;
@@ -164,8 +171,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Retry synchronization reads current storage; it never repeats a delete/reset.
     const syncSite = async () => {
         const site = await readSite();
-        await tabAccess.send(currentTab, { action: "updateRules", rules: site.rules });
-        await tabAccess.send(currentTab, { action: "toggleBlocker", enabled: site.enabled });
+        for (const message of [{ action: "updateRules", rules: site.rules }, { action: "toggleBlocker", enabled: site.enabled }]) {
+            await sendToPage(message);
+        }
         await refreshDiagnostics();
     };
     const handleFailure = (error, retry) => {
@@ -174,9 +182,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         } else {
             badge.textContent = "Error"; badge.classList.add("disabled");
             rulesList.querySelectorAll(".rule-status").forEach(status => { if (status.textContent === "Checking…") status.textContent = "Count unavailable"; });
-            showNotice(error.kind === "connection" ? error.message : (error.message || "Could not load or save site settings. Reload the controls and try again."),
-                error.kind === "connection" ? () => runAction(retry, retry) : loadCurrentSite,
-                error.kind === "connection" ? "Retry" : "Reload controls");
+            const canRetry = ["connection", "styles"].includes(error.kind);
+            showNotice(error.message || "Could not load or save site settings. Reload the controls and try again.",
+                canRetry ? () => runAction(retry, retry) : loadCurrentSite,
+                canRetry ? "Retry" : "Reload controls");
         }
     };
     const runAction = async (action, retry = syncSite) => {
@@ -190,7 +199,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         finally { busy = false; updateControls(); }
     };
     const startPicker = async () => {
-        await tabAccess.send(currentTab, { action: "startPicker" });
+        await sendToPage({ action: "startPicker" });
         window.close();
     };
     const loadCurrentSite = async () => {

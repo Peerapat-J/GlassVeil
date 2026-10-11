@@ -1,6 +1,11 @@
-importScripts("../shared/tab-access.js", "../shared/storage.js");
+importScripts("../shared/tab-access.js", "../shared/storage.js", "user-css.js");
 const ruleStorage = globalThis.GlassVeilStorage.createStorage({ area: chrome.storage.local, changes: chrome.storage.onChanged });
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
+    if (message?.type === "glassveil-user-css") {
+        globalThis.GlassVeilUserCSS.replaceUserCSS(chrome, message, sender).then(
+            () => respond({ ok: true }), error => respond({ ok: false, error: error.message }));
+        return true;
+    }
     if (message?.type !== "glassveil-storage") return;
     if (sender.id !== chrome.runtime.id || !globalThis.GlassVeilStorage.methods.includes(message.method) || !Array.isArray(message.args)) {
         respond({ ok: false, error: "Invalid storage request" }); return;

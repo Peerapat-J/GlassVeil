@@ -69,11 +69,26 @@
                 }
             }
 
-            // Exact fallback has no five-level truncation: extend a typed position
-            // path until it identifies the target, even in deeply repeated markup.
+            // Extend a typed position path until it identifies the target. Anchor
+            // ambiguous paths to stable ancestors, or finally :root: pages can
+            // append ad containers directly under html rather than inside body.
             const path = [];
             let current = element;
-            while (current && current !== document.documentElement) {
+            while (current) {
+                if (current === document.documentElement) {
+                    add(`:root > ${path.join(" > ")}`, 1000 + (path.length + 1) * 30, false, true);
+                    break;
+                }
+                if (path.length) {
+                    const anchors = describe(current).filter(part => part.semantic)
+                        .sort((a, b) => a.cost - b.cost || (a.selector < b.selector ? -1 : 1)).slice(0, 3);
+                    const anchored = anchors.map(anchor => {
+                        const selector = `${anchor.selector} > ${path.join(" > ")}`;
+                        add(selector, 1000 + path.length * 30 + anchor.cost, false, true);
+                        return selector;
+                    });
+                    if (anchored.some(selector => candidates.get(selector)?.count === 1)) break;
+                }
                 const tag = CSS.escape(current.localName);
                 const siblings = Array.from(current.parentElement?.children || []).filter(sibling => sibling.localName === current.localName);
                 path.unshift(`${tag}:nth-of-type(${siblings.indexOf(current) + 1})`);

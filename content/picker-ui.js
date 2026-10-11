@@ -11,6 +11,7 @@
             }
 
             .picker-panel {
+                pointer-events: auto;
                 cursor: grab;
                 --silver-light: #e8edf3;
                 --silver-mid: #9ca3af;
@@ -73,6 +74,9 @@
                 line-height: 18px;
                 text-align: center;
             }
+
+            .hover-outline { border-style: dashed; }
+            .hover-outline .selected-outline-label { display: none; }
 
             .picker-panel.active {
                 transform: translateX(-50%) translateY(0);

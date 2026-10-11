@@ -109,6 +109,50 @@ test('popup: retry after persisted delete synchronizes without deleting the next
     assert.deepEqual(chrome.snapshot().ruleStore.rules['example.com'].map(rule => rule.selector), ['.second']);
     assert.equal(chrome.writes.length, 2); assert.equal(get('page-notice').hidden, true);
 });
+for (const action of ['updateRules', 'toggleBlocker']) {
+    test(`popup: ${action} style failure is visible and retry only synchronizes saved settings`, async t => {
+        let fail = true;
+        const { get, chrome, window, calls } = await fixture(t, { customize: chrome => {
+            chrome.tabs.sendMessage = async (id, message) => {
+                if (message.action === action && fail) return { status: 'error', error: 'Blocking styles unavailable' };
+                return message.action === 'inspectRules' ? { rules: [] } : {};
+            };
+        } });
+        if (action === 'updateRules') window.document.querySelector('.btn-delete').click();
+        else get('blocker-toggle').click();
+        await settle();
+        assert.equal(get('status-badge').textContent, 'Error');
+        assert.match(get('page-message').textContent, /Blocking styles unavailable/);
+        assert.equal(get('retry-action').textContent, 'Retry');
+        assert.equal(calls.injections.length, 0);
+        const snapshot = chrome.snapshot(), writes = chrome.writes.length;
+        fail = false; get('retry-action').click(); await settle();
+        assert.equal(get('page-notice').hidden, true);
+        assert.deepEqual(chrome.snapshot(), snapshot);
+        assert.equal(chrome.writes.length, writes);
+        assert.equal(calls.injections.length, 0);
+    });
+}
+for (const action of ['inspectRules', 'startPicker']) {
+    test(`popup: ${action} diagnostic resume error is visible and retryable`, async t => {
+        let fail = true;
+        const { get, chrome, calls } = await fixture(t, { customize: chrome => {
+            chrome.tabs.sendMessage = async (id, message) => {
+                if (message.action === action && fail) return { status: 'error', error: 'Could not resume diagnostic blocking' };
+                return message.action === 'inspectRules' ? { rules: [] } : {};
+            };
+        } });
+        if (action === 'startPicker') { get('pick-element-btn').click(); await settle(); }
+        assert.equal(get('status-badge').textContent, 'Error');
+        assert.match(get('page-message').textContent, /resume diagnostic/);
+        assert.equal(calls.closed, false);
+        const writes = chrome.writes.length;
+        fail = false; get('retry-action').click(); await settle();
+        assert.equal(chrome.writes.length, writes);
+        if (action === 'startPicker') assert.equal(calls.closed, true);
+        else assert.equal(get('page-notice').hidden, true);
+    });
+}
 test('popup: navigation to a restricted page before an action prevents storage writes and injection', async t => {
     const { get, tab, chrome, calls } = await fixture(t);
     tab.url = 'chrome://settings'; get('blocker-toggle').click(); await settle();

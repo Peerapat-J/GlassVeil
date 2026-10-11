@@ -5,13 +5,15 @@ const { createPicker } = require('../content/picker.js');
 const utils = require('../content/picker-utils.js');
 const { createSelectionState } = require('../content/picker-state.js');
 const { createPickerUI } = require('../content/picker-ui.js');
+const { createPickerInput } = require('../content/picker-input.js');
 const { analyzeImpact, sameImpact } = require('../content/selector-impact.js');
+const { createSelectorGenerator } = require('../content/selector-generator.js');
 function setup(t, generateSelector = () => '.ad', save = async () => {}, preferences = {}) {
     const window = createDOM(t, '<div class="ad" id="first"></div><div class="ad" id="second" style="display: block !important"></div><p id="keep"></p>');
     const document = window.document, saved = [];
     let confirmations = 0;
     window.confirm = () => { confirmations++; return true; };
-    const picker = createPicker({ window, document, generateSelector, utils, createSelectionState, createPickerUI, analyzeImpact, sameImpact,
+    const picker = createPicker({ window, document, generateSelector, utils, createSelectionState, createPickerUI, createPickerInput, analyzeImpact, sameImpact,
         iconUrl: 'data:image/png;base64,', ...preferences, saveSelectors: async selectors => { await save(); saved.push(selectors); } });
     picker.start();
     const shadow = () => document.querySelector('#glassveil-picker-root')?.shadowRoot;
@@ -19,13 +21,88 @@ function setup(t, generateSelector = () => '.ad', save = async () => {}, prefere
     const first = document.querySelector('#first'), second = document.querySelector('#second');
     return { window, document, first, second, picker, shadow, click, saved, confirmations: () => confirmations };
 }
+test('picker: inline resets cannot suppress frames, but Preview Hide hides and restores them', t => {
+    const { window, first, shadow, click, picker } = setup(t, () => '#first');
+    first.style.cssText = 'display:block!important;outline:none!important;box-shadow:none!important';
+    first.getBoundingClientRect = () => first.style.display === 'none'
+        ? { left: 0, top: 0, right: 0, bottom: 0 }
+        : { left: 50, top: 100, right: 250, bottom: 180 };
+    first.dispatchEvent(new window.MouseEvent('mouseover', { bubbles: true }));
+    const hover = shadow().querySelector('.hover-outline');
+    assert.equal(hover.style.display, 'block'); assert.equal(hover.style.width, '200px');
+    first.click(); click('preview-toggle');
+    const selected = shadow().querySelector('.selected-outline:not(.hover-outline)');
+    assert.equal(first.style.display, 'none');
+    assert.equal(selected.style.display, 'none');
+    assert.equal(shadow().querySelector('.hover-outline'), null);
+    click('preview-toggle');
+    assert.equal(selected.style.display, 'block'); assert.equal(selected.style.top, '100px');
+    assert.equal(selected.style.height, '80px');
+    click('preview-toggle'); assert.equal(selected.style.display, 'none');
+    picker.stop(); assert.equal(first.style.display, 'block');
+    assert.equal(first.style.getPropertyPriority('display'), 'important');
+});
+test('picker: html-child ad interior previews without a stale frame and saves its exact selector', async t => {
+    let generate;
+    const fixture = setup(t, (element, options) => generate(element, options));
+    const { window, document, first, shadow, click, saved } = fixture;
+    generate = createSelectorGenerator({ document, Node: window.Node, CSS: window.CSS,
+        isPickerStateClass: utils.isPickerStateClass });
+    first.innerHTML = '<span></span><span></span>';
+    const ad = document.createElement('div'); ad.id = 'google-anno-sa';
+    ad.innerHTML = '<span style="display:inline!important"><span></span><span></span></span><span></span>';
+    document.documentElement.append(ad);
+    const target = ad.firstElementChild;
+    target.getBoundingClientRect = () => ({ left: 50, top: 100, right: 250, bottom: 180 });
+    target.click();
+    assert.match(shadow().querySelector('#impact-summary').textContent, /hide 1 element/);
+    assert.doesNotMatch(shadow().textContent, /No selector|Invalid selector/);
+    const frame = shadow().querySelector('.selected-outline');
+    assert.equal(frame.style.display, 'block');
+    click('preview-toggle');
+    assert.equal(target.style.display, 'none');
+    assert.equal(frame.style.display, 'none');
+    assert.equal(ad.lastElementChild.style.display, '');
+    click('preview-toggle');
+    assert.equal(target.style.display, 'inline');
+    assert.equal(target.style.getPropertyPriority('display'), 'important');
+    assert.equal(frame.style.display, 'block');
+    click('preview-toggle'); click('confirm-btn'); await settle();
+    assert.deepEqual(saved, [['#google-anno-sa > span:nth-of-type(1)']]);
+    assert.equal(shadow(), undefined);
+});
+test('picker: preview frames stay hidden on scroll and resize, then use current geometry when restored', async t => {
+    const { window, document, first, shadow, click } = setup(t, () => '#first');
+    const scroller = document.createElement('section'); document.body.appendChild(scroller); scroller.appendChild(first);
+    let top = 100;
+    first.getBoundingClientRect = () => first.style.display === 'none' ? { left: 0, top: 0, right: 0, bottom: 0 }
+        : { left: 50, top, right: 250, bottom: top + 80 };
+    first.click(); click('preview-toggle');
+    const box = shadow().querySelector('.selected-outline');
+    const writes = [];
+    const observer = new window.MutationObserver(records => writes.push(...records)); observer.observe(first, { attributes: true, attributeFilter: ['style'] });
+    scroller.scrollTop = 30; scroller.dispatchEvent(new window.Event('scroll'));
+    await new Promise(resolve => window.requestAnimationFrame(resolve));
+    assert.equal(box.style.display, 'none'); assert.equal(writes.length, 0);
+    top = 130; window.dispatchEvent(new window.Event('resize'));
+    await new Promise(resolve => window.requestAnimationFrame(resolve));
+    assert.equal(box.style.display, 'none'); assert.equal(first.style.display, 'none');
+    assert.equal(writes.length, 0);
+    click('preview-toggle');
+    assert.equal(box.style.display, 'block'); assert.equal(box.style.top, '130px');
+    observer.disconnect();
+});
 test('impact picker: previews every match, restores display priority, and clears extra outlines on deselection', t => {
     const { first, second, shadow, click, picker } = setup(t);
+    for (const element of [first, second]) element.getBoundingClientRect = () => ({ left: 50, top: 100, right: 250, bottom: 180 });
     first.click();
     assert.match(shadow().querySelector('#impact-summary').textContent, /hide 2 elements/);
     assert.equal(shadow().querySelectorAll('.impact-outline').length, 1);
+    shadow().querySelectorAll('.selected-outline').forEach(box => assert.equal(box.style.display, 'block'));
     click('preview-toggle'); assert.equal(second.style.display, 'none');
+    shadow().querySelectorAll('.selected-outline').forEach(box => assert.equal(box.style.display, 'none'));
     click('preview-toggle'); assert.equal(second.style.display, 'block'); assert.equal(second.style.getPropertyPriority('display'), 'important');
+    shadow().querySelectorAll('.selected-outline').forEach(box => assert.equal(box.style.display, 'block'));
     first.click(); assert.equal(shadow().querySelectorAll('.impact-outline').length, 0);
     first.click(); click('preview-toggle'); picker.stop();
     assert.equal(first.style.display, ''); assert.equal(second.style.display, 'block');
