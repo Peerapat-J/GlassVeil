@@ -104,3 +104,28 @@ test('selector: every allow-listed stable attribute can identify a target', t =>
         target.removeAttribute(name);
     }
 });
+test('selector: html-child ad interior uses its stable container despite repeated spans', t => {
+    const window = createDOM(t, '<div><span></span><span></span></div>');
+    const ad = window.document.createElement('div');
+    ad.id = 'google-anno-sa';
+    ad.innerHTML = '<span><span></span><span></span></span><span id="gda"></span>';
+    window.document.documentElement.append(ad);
+    const target = ad.firstElementChild, generate = generator(window);
+    const selector = generate(target);
+    assert.equal(selector, '#google-anno-sa > span:nth-of-type(1)');
+    assert.deepEqual([...window.document.querySelectorAll(selector)], [target]);
+    // A new sibling of the ad must not redirect the saved rule elsewhere.
+    ad.before(window.document.createElement('div'));
+    assert.equal(generate(target), selector);
+    assert.deepEqual([...window.document.querySelectorAll(selector)], [target]);
+});
+test('selector: html-child targets without a stable anchor get an absolute root path', t => {
+    const window = createDOM(t, '<div><span></span><span></span></div>');
+    const ad = window.document.createElement('div');
+    ad.innerHTML = '<span></span><span></span>';
+    window.document.documentElement.append(ad);
+    const target = ad.firstElementChild, generate = generator(window);
+    assert.equal(generate(target), ':root > div:nth-of-type(1) > span:nth-of-type(1)');
+    assert.deepEqual([...window.document.querySelectorAll(generate(target))], [target]);
+    assert.deepEqual([...window.document.querySelectorAll(generate(target, { mode: 'similar' }))], [target]);
+});

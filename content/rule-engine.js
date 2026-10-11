@@ -2,10 +2,20 @@
 (function (root) {
     "use strict";
 
-    const createRuleEngine = ({ document, MutationObserver }) => {
+    const createRuleEngine = ({ document, MutationObserver, replaceUserCSS = async () => {} }) => {
         const style = document.createElement("style");
         style.id = "glassveil-injected-style";
         let observer = null;
+        let userCSS = "", pending = Promise.resolve();
+        const syncUserCSS = css => {
+            pending = pending.catch(() => {}).then(async () => {
+                if (css === userCSS) return;
+                await replaceUserCSS({ css, previousCSS: userCSS });
+                userCSS = css;
+            });
+            // Runtime callers use flush() before reporting success to the UI.
+            pending.catch(error => console.error("[GlassVeil] Could not apply user CSS:", error));
+        };
 
         // document_start can run before the document element exists.
         if (document.documentElement) {
@@ -28,6 +38,7 @@
             const invalidSelectors = [];
             if (suspended || !enabled || !Array.isArray(selectors)) {
                 style.textContent = "";
+                syncUserCSS("");
                 return { appliedSelectors, invalidSelectors };
             }
 
@@ -49,6 +60,7 @@
             }
 
             style.textContent = Array.from(sheet.cssRules, rule => rule.cssText).join("\n");
+            syncUserCSS(style.textContent);
             return { appliedSelectors, invalidSelectors };
         };
 
@@ -56,9 +68,12 @@
             observer?.disconnect();
             observer = null;
             style.remove();
+            syncUserCSS("");
         };
 
-        return Object.freeze({ apply, destroy, suspend() { suspended = true; apply(latest, siteEnabled); }, resume() { suspended = false; apply(latest, siteEnabled); } });
+        return Object.freeze({ apply, destroy, flush: () => pending,
+            suspend() { suspended = true; apply(latest, siteEnabled); return pending; },
+            resume() { suspended = false; apply(latest, siteEnabled); return pending; } });
     };
 
     const api = Object.freeze({ createRuleEngine });

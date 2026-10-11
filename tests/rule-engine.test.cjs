@@ -56,3 +56,27 @@ test('rules: safely attaches at document_start and cancels pending attachment on
     window.document.appendChild(window.document.createElement('html'));
     await settle(); assert.equal(window.document.querySelectorAll('style').length, 0);
 });
+
+test('rules: serializes user sheets through save, suspend, resume, disable and destroy', async t => {
+    const window = createDOM(t), calls = [];
+    const engine = createRuleEngine({ document: window.document, MutationObserver: window.MutationObserver,
+        replaceUserCSS: async details => { await settle(); calls.push(details); } });
+    engine.apply(['.ad', '['], true);
+    engine.apply(['.ad', '#other'], true);
+    engine.suspend(); engine.resume(); engine.apply(['.ad'], false);
+    await engine.flush();
+    assert.equal(calls.length, 5);
+    assert.equal(calls[0].previousCSS, '');
+    for (let index = 1; index < calls.length; index++) assert.equal(calls[index].previousCSS, calls[index - 1].css);
+    assert.equal(calls[2].css, ''); assert.equal(calls[4].css, '');
+    engine.apply(['.ad'], true); await engine.flush(); engine.destroy(); await engine.flush();
+    assert.equal(calls.at(-1).css, '');
+});
+test('rules: failed user injection is retryable and does not advance the known sheet', async t => {
+    const window = createDOM(t), calls = []; let fail = true;
+    const engine = createRuleEngine({ document: window.document, MutationObserver: window.MutationObserver,
+        replaceUserCSS: async details => { calls.push(details); if (fail) throw new Error('injection failed'); } });
+    engine.apply(['.ad'], true); await assert.rejects(engine.flush(), /injection failed/);
+    fail = false; engine.apply(['.ad'], true); await engine.flush();
+    assert.equal(calls.length, 2); assert.equal(calls[1].previousCSS, '');
+});

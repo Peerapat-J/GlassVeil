@@ -1,0 +1,151 @@
+# Testing picker input isolation (#45)
+
+The picker receives page pointer interaction on a transparent crosshair surface and uses synchronous document hit testing to choose the element underneath. Links and iframe ads should be selected without activating the page. An iframe is selected as one container, including when its content comes from another origin.
+
+## Load this branch in Chrome
+
+1. Open `chrome://extensions` and enable Developer mode.
+2. Choose **Load unpacked** and select `/Users/peerapatj/myProject/GlassVeil`. If already loaded from this folder, click **Reload** on its extension card.
+3. Refresh the website after reloading the extension. This initializes the capture guards at `document_start`, before the website registers its own handlers.
+4. Start from the extension popup, configured shortcut (normally Cmd+B on macOS), or the **Block element on this page** context menu action.
+5. Click an unwanted object. It should appear in the picker selection without opening a link/tab or running the object's action. Use Preview Hide, then Block to save; Cancel/Escape restores unsaved preview changes.
+
+No build or ZIP is needed. Chrome reads the files from this checkout, so switching branches changes the code that the next extension reload will load.
+
+## Controlled fixture
+
+Run from the repository:
+
+```sh
+npm run test:browser
+```
+
+Open <http://127.0.0.1:8765/> in the browser where the unpacked extension is installed. The server binds only to loopback on ports 8765 and 8766 and serves an explicit file allowlist. Stop it with Ctrl+C in the terminal that started it.
+
+Choose a target scenario, reset the counters, then start the **extension's** picker. Cancel before changing scenarios. During target selection, all four Page activity counters should remain zero and no `#activated` navigation should occur. Cancel and click normally as a positive control: the counters should increase. Refresh/reset before the next run. Saving a fixture rule uses real extension storage for `127.0.0.1`; delete those test rules from the popup afterward so they do not affect later localhost pages.
+
+Scenarios include an ordinary link with nested text, an action button, same-origin and cross-origin iframe ads, a page overlay at maximum z-index, an ad with inline important CSS, a nested CSS scroll container, and a native modal dialog. In extension mode, select the modal scenario first and use the configured shortcut or toolbar popup to start the picker while the dialog is open.
+
+For layout/input checks without installing the extension, open <http://127.0.0.1:8765/?demo=1> and click **Start demo picker**. This loads the actual picker/selector modules in the page; saving hides objects only in that tab and is cleared on refresh. The demo does **not** test isolated-world injection, Chrome storage, the popup, context-menu integration or extension reloads. Choosing the modal scenario automatically starts its demo picker because the page's start button becomes inert outside the dialog.
+
+The standalone demo uses a document stylesheet, so it cannot validate blocking against inline important styles. Test the **Ad with inline important CSS** scenario with the real extension for saving/persistence; the demo can validate its independent selection frames.
+
+## Manual checklist
+
+- [ ] With the picker inactive, click the link/button and an iframe ad. Counters increase, confirming the fixture can detect page activation. Reset/refresh.
+- [ ] Select the link's box and its nested text. Check the selection outline/selector, zero page counters, no navigation, and no new tab.
+- [ ] Select the action button. Window/document capture handlers and the target's pointer/mouse handlers must remain silent.
+- [ ] Select each iframe as a container, toggle Preview Hide, then Cancel. Its content receives no events and the iframe returns. Save separately and verify persistence with the real extension.
+- [ ] Select the maximum-z-index overlay. It should not cover the picker or intercept the selection gesture.
+- [ ] Open the modal scenario, select its button and toggle Preview Hide. The panel remains usable. Select Parent must report that the modal container cannot be saved because it contains the picker; Undo restores the valid button selection.
+- [ ] Try middle/right clicks and a double click. Secondary clicks must not activate/select objects; a double click performs only its first selection toggle. Native page context menus are suppressed during selection.
+- [ ] Select/deselect multiple objects; try Select Parent, Undo/Cmd+Z, Exact/Similar modes, Refresh matches and Preview Hide. Inputs retain native editing behavior.
+- [ ] Drag the panel; scroll a real page with nested scroll regions, resize the window, and check outlines stay aligned. The shield scrolls a CSS scroll container underneath the pointer or allows native viewport scrolling; custom JavaScript wheel handlers are paused while picking.
+- [ ] Hold a press on the page or panel, press Escape, then release. The release/click must not activate the page. A fresh mouse gesture afterward must work normally.
+- [ ] Exit with Cancel, Escape and successful Block. Confirm the input surface disappears, previews restore as appropriate, and normal page actions work. Re-enter and repeat.
+- [ ] Start from the popup, shortcut and context menu; reload the extension and page and repeat. Confirm one panel appears and fixture rules can be toggled/deleted normally.
+- [ ] Retry the reported MangaClouds URL when reachable; record the exact ad target, browser/extension version and whether it is an iframe.
+
+## Inline-important ad follow-up
+
+The reported MangaClouds page was reachable on 2026-10-10. DOM inspection found the visible ad rows/containers use inline important display styles and inline `outline: initial !important` resets. These outrank the original document stylesheet and page-class highlights. This is a confirmed failure mechanism; it does not establish that every returning ad is caused by CSS rather than a changed selector or regenerated markup.
+
+Saved rules now also use [Chrome scripting USER-origin CSS](https://developer.chrome.com/docs/extensions/reference/api/scripting#type-CSSInjection), which takes precedence over author inline important declarations. It applies to matching elements inserted later without modifying their inline styles. Hover/selection outlines draw in the picker shadow root. Preview Hide hides both matching objects and their outlines; disabling preview restores their outlines at current bounds.
+
+The user verified that Block works on MangaClouds after the user-origin CSS fix, then reported that preview should hide outlines as well as objects. The cached preview-frame geometry has been removed to match that behavior. Regression checks cover frame hiding/restoration, repeated preview toggles, selected/additional matches, scroll/resize, inline reset protection, and the existing user-sheet save/retry behavior. Full real-extension toggle and persistence QA remains in the checklist below.
+
+Rechecked in the standalone browser fixture: selecting the inline-important ad showed its frame; Preview Hide set both the ad and frame to `display:none`; switching preview off restored both; a second preview toggle hid both again; Cancel restored the ad and removed the picker. Page activity counters stayed zero.
+
+After reloading the extension and refreshing the page:
+
+1. On the fixture in **extension mode**, choose **Ad with inline important CSS**, then start picking. Hover must show a dashed cyan frame; selection must show a numbered frame. Turn Preview Hide on: the object and its frame must disappear. Turn it off: both return. Repeat, scroll and resize; check selected and additional-match frames stay hidden during preview. Hovering a different visible object should still show its own frame.
+2. Save while Preview Hide is on. The panel must close and the ad must remain hidden. Click **Rewrite / replace protected ad**: the replacement with the same selector must stay hidden despite inline `display:flex !important`.
+3. In the popup, disable the saved rule/site: the ad must return. Re-enable: it must hide. Delete the rule and verify it returns. Refresh the fixture and check the persisted enabled/disabled state; delete fixture-only localhost rules afterward.
+4. Repeat on the left, right and bottom-right MangaClouds ads. If selecting one row hides only that row, use **Select Parent** and review the frame/match count to choose its container. Save, wait 20 seconds, scroll and refresh. Confirm the saved selector still matches if the site changes its ad markup.
+5. Cancel/Escape an unsaved selection: original inline display and priority must return, frames must disappear, and ordinary page interaction must resume.
+
+## Root-level ad selector follow-up
+
+On the Air Gear page (<https://www.mangaclouds.com/en/manga/air-gear-en.html>), the `#google-anno-sa` ad is appended directly under html. Its unnamed interior span and close-button span share that container. The old semantic candidate `#google-anno-sa > span` matched both; its unanchored positional path also matched other page spans, and traversal stopped before html. This produced an empty selector. Invalid selections are intentionally excluded from preview, which explains the remaining outline; selecting the outer container still worked.
+
+The positional fallback now tries stable ancestor anchors and, if needed, an absolute `:root` path. The interior generates `#google-anno-sa > span:nth-of-type(1)` in Exact mode without selecting its sibling or widening to the whole container. Regression tests reproduced the empty-selector failure before the fix, then verified unique matching, an unrelated sibling insertion, the no-ID root fallback, Preview Hide/frame restoration and the selector passed to save. `npm test` passes 209 tests.
+
+On 2026-10-11, the standalone browser scenario **Ad directly under html (two spans)** showed one valid match for the interior, no page activity, and no interior/frame during Preview Hide. Disabling preview restored both; Cancel restored the element and removed the picker. This verifies the actual picker modules in a browser; installed-extension storage/USER-origin CSS persistence on this live ad remains manual QA.
+
+After reloading the unpacked extension and refreshing the page:
+
+1. Remove the old unsavable selection or start a fresh picker. Select the white interior of the bottom/right anchor in **Exact element** mode. It should show one valid selector rather than **No selector**.
+2. Enable Preview Hide: both the selected interior and its cyan frame should disappear. Its unselected sibling/outer frame may remain. Disable preview: the interior and numbered frame should return. Repeat and Cancel; unsaved content should return.
+3. Select that interior again and Block with preview enabled. It should stay hidden after the panel closes, after scrolling/waiting, and after refreshing the page. Check the popup rule can be disabled, re-enabled and deleted.
+4. To hide the complete ad including its close button and outer frame, choose **Select Parent** and review `#google-anno-sa` before Block. Verify the entire container stays hidden after refresh.
+5. For a controlled comparison, run the new fixture scenario in extension mode and repeat steps 1–3. Delete any localhost test rules afterward.
+
+## Popup stylesheet failures (PR review)
+
+Rule/toggle responses now wait for the user stylesheet. A failed insertion/removal returns an error to the popup, which offers Retry; Retry synchronizes the already-saved settings without repeating the mutation. Automated regressions delay and reject both message paths, verify the previous sheet is retained for retry, and check popup errors/retry without a second storage write or content reinjection. Browser extension API failures remain simulated in these tests.
+
+Manual extension checks: edit a rule, disable/re-enable it, delete it, and toggle the site blocker on an inline-important ad. Check the page reflects each completed action. If a style update fails, verify an Error notice and Retry appear; retry must apply the saved settings without deleting another rule or repeating the edit/toggle. Refresh and confirm persisted state. Keep localhost test rules disposable.
+
+## Internal diagnostic stylesheet completion (PR review)
+
+`testRule`/`stopRuleTest` now acknowledge completion only after the queued USER-sheet change. The timed preview starts after a successful pause, retains Done with a retry notice if resume fails, and cannot reappear after being cancelled during a delayed pause. `inspectRules` and `startPicker` also wait for any diagnostic resume and forward errors to the popup. Automated tests simulate delayed/failed stylesheet operations, retries, timer timing, cancelled starts and diagnostic handoffs. Chrome extension API delay/failure behavior has not been manually exercised.
+
+For manual happy-path QA, save an enabled rule hiding an inline-important fixture ad. From an extension DevTools context, send the internal messages to that page's tab (there are no popup Test/Done controls):
+
+```js
+const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+await chrome.tabs.sendMessage(tab.id, { action: "testRule", selector: "#protected-ad" });
+// Expect valid/count only after the ad becomes visible; preview lasts five seconds.
+await chrome.tabs.sendMessage(tab.id, { action: "stopRuleTest" });
+// Expect stopped only after the ad is hidden again.
+```
+
+Repeat by letting the timer expire and by pressing Done; verify blocking returns and the preview disappears. Repeat by starting the picker or opening the popup during a diagnostic: normal UI must wait for blocking to resume. Verify disabled-site behavior and delete fixture-only localhost rules afterward. Delay/failure/retry and overlapping-message checks currently rely on the automated harness.
+
+## Verification boundaries
+
+Stacked-dialog mounting was checked on 2026-10-11 in the standalone browser fixture. Both DOM orders (`older-dialog` before/after `active-dialog`) mounted the picker inside the active modal and allowed selection, Preview Hide and Cancel. A third scenario cleared focus to body; native hit testing still chose the active dialog, Preview Hide hid the ad/frame, and Block saved the exact selector in the demo, hid the ad and removed the picker. Page activity counters remained zero. This is browser evidence for the picker modules, not installed-extension storage/API verification. The selection follows the [HTML modal interaction model](https://html.spec.whatwg.org/multipage/interaction.html#inert), with focus and hit testing used to identify the interactive modal rather than document order.
+
+Manual extension checks: run **Stacked dialogs (last in DOM active)**, **Stacked dialogs (first in DOM active)** and **Stacked dialogs (focus cleared)** separately, refreshing the fixture between scenarios. Start the extension picker; select the active dialog's ad, toggle preview on/off and Cancel. Repeat with Block; check that only the selected ad hides and the picker closes. Delete localhost test rules after save. Older dialogs must remain inert and the picker panel must remain usable.
+
+Checked on 2026-10-10 with the standalone demo in a real browser: ordinary link selection, middle/double-click suppression, same-origin and cross-origin iframe selection, iframe Preview Hide/Cancel, modal-child selection and parent rejection, maximum-z-index overlay selection/save cleanup, panel dragging, nested scrolling (scrollTop advanced to 720), and Escape followed by a normal link click. Page/iframe activity counters remained zero while selecting; the normal click after Escape incremented window/document/target counters and navigated to `#activated` as the positive control.
+
+The real unpacked-extension workflow (isolated-world listener ordering, popup/context-menu/shortcut integration and persistent rule storage), full held-press manual checks, and the reported MangaClouds page remain pending manual QA. The existing automated integration tests cover their DOM/storage/message logic, not actual Chrome extension UI.
+
+`npm test` includes regression coverage for complete activation sequences, window/document capture ordering, hit-test delegation, iframe container selection, panel exemptions, keyboard handling, cancel/save cleanup and cancellation during a held press. jsdom mocks layout and popover behavior; it cannot establish real browser hit testing or extension-world ordering.
+
+The input guards are installed once when the picker factory is created and remain dormant between sessions. Re-registering on each start would put them after the page's existing window listeners. Stopping releases the session's DOM references and removes its root/shield with the picker. If Escape interrupts a held press, the guard consumes that gesture's remaining release/click before allowing fresh interaction.
+
+An extension injected into an already-loaded page cannot retroactively outrank earlier window capture listeners. Refresh the page after extension reload for this guarantee. The shield is a manual top-layer popover where available, with maximum-z-index fallback; it mounts inside an existing modal/fullscreen element to remain interactive. Rules that include an ancestor containing the picker are rejected so Preview Hide cannot hide the picker itself. Shadow-root contents and individual cross-origin iframe contents remain unsupported. General popup/redirect blocking outside a picker session belongs to #4.
+
+
+## Picker save versus apply failures
+
+After persistence succeeds, a USER-sheet failure now reports **Rules saved**, explains that closing leaves them enabled, and offers **Retry applying** / **Close**. Selection edits are locked; preview can still be toggled. Retry only applies current saved rules and does not repeat `appendSelectors`. An actual persistence failure retains **Could not save**, **Retry save** and **Cancel**.
+
+Automated regressions reject style application after saving, delay a successful retry, verify only one append, and check Close followed by fresh-page loading. They also check locked selection edits and that preview toggles retain the committed-save notice. Generic save-failure regressions still cover editable retry.
+
+Manual extension checklist (API failures currently simulated in tests):
+
+- [ ] Save an inline-important fixture ad with USER-style application failing after storage succeeds. Verify **Rules saved**, **Retry applying** and **Close**; the notice must explain that saved rules remain enabled.
+- [ ] Toggle preview; the notice must remain. Selection removal, Undo, parent selection and precision edits must stay disabled.
+- [ ] Restore style application and retry. Verify the ad hides, the picker closes, and the stored rule ID/count is unchanged.
+- [ ] Repeat the failure and choose Close or Escape. Reload the page; the saved rule must apply, consistent with the notice.
+- [ ] Fail persistence instead: verify **Could not save** / **Retry save**, then Cancel and reload. No new rule should be stored. Remove disposable localhost rules afterward.
+
+
+## Touch isolation
+
+Early capture now isolates `touchstart`, `touchmove`, `touchend` and `touchcancel` from page handlers. Panel touch controls still receive their own events, with bubbling contained at the picker root. Active-session touch guards stop propagation without cancelling native touch defaults; this preserves panning and the browser-generated tap click, which the existing click guard cancels and uses for selection. The [Touch Events specification](https://www.w3.org/TR/touch-events/#the-touchstart-event) describes why cancelling touchstart would also suppress scrolling and compatibility mouse events.
+
+A touch still held when the picker closes remains guarded through release/cancel and its compatibility mouse tail. Touch contact is tracked independently of pointer cancellation so a native pan cannot prematurely release page handlers.
+
+Automated tests dispatch synthetic TouchEvents to page/shield/panel, cover early window/document/target listeners, re-entry, tap-click selection, exit during held touch and interleaved pointer cancellation. Physical touch input and native compatibility-click/pan behavior remain unverified here; the browser fixture counters now include touch events in the parent page and both iframe fixtures.
+
+Manual checklist on a touch-capable browser/device with the extension installed:
+
+- [ ] Open the fixture; select ordinary link/button targets and each iframe by tapping. Each tap should select once, keep page/iframe counters at zero, and avoid opening a link/tab.
+- [ ] Pan vertically while picking. Viewport scrolling should work, page touch/gesture handlers must stay quiet, and a scroll must not select an element.
+- [ ] Tap Preview Hide, Undo and other panel controls; verify they work without activating page handlers. Repeat with Cancel and Block.
+- [ ] Close the picker via Escape while a finger remains down; move, lift and allow any compatibility mouse sequence to finish. No page handler should run. Start a fresh touch; ordinary interaction must resume.
+- [ ] Repeat after re-entering the picker and with the modal/maximum-overlay scenarios. Delete disposable saved fixture rules afterward.
