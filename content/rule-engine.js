@@ -72,7 +72,8 @@
         };
 
         return Object.freeze({ apply, destroy, flush: () => pending,
-            suspend() { suspended = true; apply(latest, siteEnabled); }, resume() { suspended = false; apply(latest, siteEnabled); } });
+            suspend() { suspended = true; apply(latest, siteEnabled); return pending; },
+            resume() { suspended = false; apply(latest, siteEnabled); return pending; } });
     };
 
     const api = Object.freeze({ createRuleEngine });

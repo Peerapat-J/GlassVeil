@@ -55,24 +55,26 @@
     window.glassVeilInjected = true;
     storage.subscribe(reloadRules);
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        const respondAsync = operation => operation.then(sendResponse,
+            error => sendResponse({ status: "error", error: error.message || "Could not apply blocking styles" }));
         if (message.action === "startPicker") {
-            diagnostics.stop();
-            picker.start();
-            sendResponse({ status: "picker_started" });
+            respondAsync(diagnostics.stop().then(() => {
+                picker.start();
+                return { status: "picker_started" };
+            }));
         } else if (message.action === "inspectRules") {
-            diagnostics.stop();
-            sendResponse({ rules: diagnostics.describe(message.rules) });
+            respondAsync(diagnostics.stop().then(() => ({ rules: diagnostics.describe(message.rules) })));
         } else if (message.action === "testRule") {
             picker.stop();
-            sendResponse(diagnostics.test(message.selector));
+            respondAsync(diagnostics.test(message.selector));
         } else if (message.action === "stopRuleTest") {
-            diagnostics.stop(); sendResponse({ status: "stopped" });
+            respondAsync(diagnostics.stop().then(() => ({ status: "stopped" })));
         } else if (message.action === "toggleBlocker" || message.action === "updateRules") {
             if (message.action === "toggleBlocker") isBlockerEnabled = message.enabled;
             else activeRules = message.rules;
-            applyCurrentRules().then(
-                () => sendResponse({ status: message.action === "toggleBlocker" ? "blocker_toggled" : "rules_updated" }),
-                error => sendResponse({ status: "error", error: error.message || "Could not apply blocking styles" }));
+            respondAsync(applyCurrentRules().then(() => ({
+                status: message.action === "toggleBlocker" ? "blocker_toggled" : "rules_updated"
+            })));
         }
         return true;
     });

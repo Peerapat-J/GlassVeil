@@ -149,6 +149,8 @@ The popup reads current-page diagnostics via content messages. Invalid selectors
 
 Compare a rule's effect by switching its toggle off and on. The enabled state is persisted and synchronized to matching open tabs, and stays at the chosen value until changed. There is no countdown or automatic restoration. Other enabled rules continue to apply, so overlapping rules may still hide the same element. The retained `testRule`/`stopRuleTest` content-message handlers support an internal diagnostic preview; the popup has no Test/Done controls.
 
+Internal diagnostics await the USER-sheet suspension before drawing the preview and starting its five-second timer. Resume is also awaited before acknowledging stop, starting the picker or returning an inspection. Failed suspension restores the engine's normal application state; failed resume keeps the diagnostic Done control with a retry notice. Timers and Done handle rejections, while message callers receive an error response. A revision guard prevents a delayed test from recreating an overlay after a newer stop/test request.
+
 ### Rule management manual checks
 
 1. Before upgrading a disposable profile, save legacy selectors for two hostnames, including a duplicate and invalid selector. Upgrade/reload: verify ordering, usable rules, invalid labels and skipped-entry reporting. Inspect local storage to confirm original keys are unchanged and ruleStore IDs survive another restart.

@@ -86,6 +86,22 @@ Rule/toggle responses now wait for the user stylesheet. A failed insertion/remov
 
 Manual extension checks: edit a rule, disable/re-enable it, delete it, and toggle the site blocker on an inline-important ad. Check the page reflects each completed action. If a style update fails, verify an Error notice and Retry appear; retry must apply the saved settings without deleting another rule or repeating the edit/toggle. Refresh and confirm persisted state. Keep localhost test rules disposable.
 
+## Internal diagnostic stylesheet completion (PR review)
+
+`testRule`/`stopRuleTest` now acknowledge completion only after the queued USER-sheet change. The timed preview starts after a successful pause, retains Done with a retry notice if resume fails, and cannot reappear after being cancelled during a delayed pause. `inspectRules` and `startPicker` also wait for any diagnostic resume and forward errors to the popup. Automated tests simulate delayed/failed stylesheet operations, retries, timer timing, cancelled starts and diagnostic handoffs. Chrome extension API delay/failure behavior has not been manually exercised.
+
+For manual happy-path QA, save an enabled rule hiding an inline-important fixture ad. From an extension DevTools context, send the internal messages to that page's tab (there are no popup Test/Done controls):
+
+```js
+const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+await chrome.tabs.sendMessage(tab.id, { action: "testRule", selector: "#protected-ad" });
+// Expect valid/count only after the ad becomes visible; preview lasts five seconds.
+await chrome.tabs.sendMessage(tab.id, { action: "stopRuleTest" });
+// Expect stopped only after the ad is hidden again.
+```
+
+Repeat by letting the timer expire and by pressing Done; verify blocking returns and the preview disappears. Repeat by starting the picker or opening the popup during a diagnostic: normal UI must wait for blocking to resume. Verify disabled-site behavior and delete fixture-only localhost rules afterward. Delay/failure/retry and overlapping-message checks currently rely on the automated harness.
+
 ## Verification boundaries
 
 Stacked-dialog mounting was checked on 2026-10-11 in the standalone browser fixture. Both DOM orders (`older-dialog` before/after `active-dialog`) mounted the picker inside the active modal and allowed selection, Preview Hide and Cancel. A third scenario cleared focus to body; native hit testing still chose the active dialog, Preview Hide hid the ad/frame, and Block saved the exact selector in the demo, hid the ad and removed the picker. Page activity counters remained zero. This is browser evidence for the picker modules, not installed-extension storage/API verification. The selection follows the [HTML modal interaction model](https://html.spec.whatwg.org/multipage/interaction.html#inert), with focus and hit testing used to identify the interactive modal rather than document order.

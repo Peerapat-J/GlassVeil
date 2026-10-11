@@ -44,7 +44,7 @@ test('rules: disabled and invalid records remain stored while only enabled valid
     assert.deepEqual(result.appliedSelectors, ['.ad']); assert.deepEqual(result.invalidSelectors, ['[']);
     assert.doesNotMatch(window.document.querySelector('style').textContent, /off/);
 });
-test('diagnostics: counts all matches, isolates invalid/zero and restores latest rules after temporary test', t => {
+test('diagnostics: counts all matches, isolates invalid/zero and restores latest rules after temporary test', async t => {
     const window = createDOM(t, '<div class="ad"></div><div class="ad"></div>'), document = window.document;
     const engine = createRuleEngine({ document, MutationObserver: window.MutationObserver });
     let finish;
@@ -54,13 +54,72 @@ test('diagnostics: counts all matches, isolates invalid/zero and restores latest
     assert.deepEqual(diagnostics.describe([{ id: 'a', selector: '.ad' }, { id: 'b', selector: '[' }, { id: 'c', selector: '.missing' }]),
         [{ id: 'a', status: 'valid', count: 2 }, { id: 'b', status: 'invalid', count: 0 }, { id: 'c', status: 'zero', count: 0 }]);
     engine.apply([{ selector: '.ad', enabled: true }], true);
-    assert.deepEqual(diagnostics.test('.ad'), { status: 'valid', count: 2 });
+    assert.deepEqual(await diagnostics.test('.ad'), { status: 'valid', count: 2 });
     assert.equal(document.querySelector('#glassveil-injected-style').textContent, ''); assert.ok(document.querySelector('glassveil-rule-preview'));
-    engine.apply([{ selector: '.new', enabled: true }], true); finish();
+    engine.apply([{ selector: '.new', enabled: true }], true); await finish();
     assert.equal(document.querySelector('glassveil-rule-preview'), null);
     assert.match(document.querySelector('#glassveil-injected-style').textContent, /\.new/);
-    diagnostics.test('.ad'); diagnostics.stop(); assert.match(document.querySelector('#glassveil-injected-style').textContent, /\.new/);
-    assert.equal(diagnostics.test('[').status, 'invalid'); assert.equal(document.querySelector('glassveil-rule-preview'), null);
+    await diagnostics.test('.ad'); await diagnostics.stop(); assert.match(document.querySelector('#glassveil-injected-style').textContent, /\.new/);
+    assert.equal((await diagnostics.test('[')).status, 'invalid'); assert.equal(document.querySelector('glassveil-rule-preview'), null);
+});
+test('diagnostics: preview timer starts after pause, and cleanup waits for resume', async t => {
+    const window = createDOM(t, '<div class="ad"></div>'), document = window.document;
+    let delayed = false, release, timers = 0;
+    const engine = createRuleEngine({ document, MutationObserver: window.MutationObserver,
+        replaceUserCSS: async () => { if (delayed) await new Promise(resolve => { release = resolve; }); } });
+    engine.apply(['.ad'], true); await engine.flush();
+    const diagnostics = createDiagnostics({ document, ruleEngine: engine, window: {
+        CSSStyleSheet: window.CSSStyleSheet, setTimeout: (callback, delay) => { assert.equal(delay, 5000); timers++; return 1; },
+        clearTimeout() {}, requestAnimationFrame: () => 1, cancelAnimationFrame() {}
+    } });
+    delayed = true;
+    const testing = diagnostics.test('.ad'); await settle();
+    assert.equal(document.querySelector('glassveil-rule-preview'), null); assert.equal(timers, 0);
+    release(); assert.equal((await testing).status, 'valid');
+    assert.ok(document.querySelector('glassveil-rule-preview')); assert.equal(timers, 1);
+    const stopping = diagnostics.stop(); await settle();
+    assert.ok(document.querySelector('glassveil-rule-preview'));
+    release(); await stopping;
+    assert.equal(document.querySelector('glassveil-rule-preview'), null);
+});
+test('diagnostics: stopping a delayed pause cannot resurrect its overlay or timer', async t => {
+    const window = createDOM(t, '<div class="ad"></div>'), document = window.document;
+    let release, timers = 0;
+    const sheets = [];
+    const engine = createRuleEngine({ document, MutationObserver: window.MutationObserver,
+        replaceUserCSS: async ({ css }) => { if (!css) await new Promise(resolve => { release = resolve; }); sheets.push(css); } });
+    engine.apply(['.ad'], true); await engine.flush();
+    const diagnostics = createDiagnostics({ document, ruleEngine: engine, window: {
+        CSSStyleSheet: window.CSSStyleSheet, setTimeout: () => { timers++; return 1; },
+        clearTimeout() {}, requestAnimationFrame: () => 1, cancelAnimationFrame() {}
+    } });
+    const testing = diagnostics.test('.ad'); await settle();
+    const stopping = diagnostics.stop(); release();
+    assert.equal((await testing).status, 'cancelled'); await stopping;
+    assert.equal(timers, 0); assert.equal(document.querySelector('glassveil-rule-preview'), null);
+    assert.match(sheets.at(-1), /\.ad/);
+});
+test('diagnostics: timed resume failure keeps a visible Done retry and handles its rejection', async t => {
+    const window = createDOM(t, '<div class="ad"></div>'), document = window.document;
+    let fail = false, finish, previewShadow;
+    const attachShadow = window.HTMLElement.prototype.attachShadow;
+    window.HTMLElement.prototype.attachShadow = function (options) {
+        const shadow = attachShadow.call(this, options);
+        if (this.localName === 'glassveil-rule-preview') previewShadow = shadow;
+        return shadow;
+    };
+    const engine = createRuleEngine({ document, MutationObserver: window.MutationObserver,
+        replaceUserCSS: async ({ css }) => { if (fail && css) throw new Error('Resume unavailable'); } });
+    engine.apply(['.ad'], true); await engine.flush();
+    const diagnostics = createDiagnostics({ document, ruleEngine: engine, window: {
+        CSSStyleSheet: window.CSSStyleSheet, setTimeout: callback => { finish = callback; return 1; },
+        clearTimeout() {}, requestAnimationFrame: () => 1, cancelAnimationFrame() {}
+    } });
+    await diagnostics.test('.ad'); fail = true; await finish();
+    assert.ok(document.querySelector('glassveil-rule-preview'));
+    assert.match(previewShadow.querySelector('.notice').textContent, /Could not resume blocking.*Done to retry/);
+    fail = false; previewShadow.querySelector('button').click(); await settle();
+    assert.equal(document.querySelector('glassveil-rule-preview'), null);
 });
 test('content: per-rule changes reach two open pages and disabled state survives fresh initialization', async t => {
     const chrome = createChrome({ rules: { 'example.com': ['.ad', '['] } });
