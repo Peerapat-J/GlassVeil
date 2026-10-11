@@ -8,10 +8,13 @@
         let lastHover = null;
         let pressed = false;
         let finishingPress = false;
+        let touchActive = false;
+        let finishingTouch = false;
         const activationEvents = ["pointerdown", "pointerup", "pointercancel", "mousedown", "mouseup",
-            "click", "auxclick", "dblclick", "contextmenu", "dragstart"];
-        const movementEvents = ["pointermove", "mousemove", "mouseover", "mouseout"];
-        const isDown = event => event.type === "pointerdown" || event.type === "mousedown";
+            "click", "auxclick", "dblclick", "contextmenu", "dragstart", "touchstart", "touchend", "touchcancel"];
+        const movementEvents = ["pointermove", "mousemove", "mouseover", "mouseout", "touchmove"];
+        const isDown = event => ["pointerdown", "mousedown", "touchstart"].includes(event.type);
+        const isRelease = event => ["pointerup", "mouseup", "pointercancel", "click", "auxclick", "touchend", "touchcancel"].includes(event.type);
         const cancel = event => { event.preventDefault(); event.stopImmediatePropagation(); };
 
         const hover = element => {
@@ -78,18 +81,35 @@
             if (!session) {
                 if (!finishingPress) return;
                 // Escape/cancel during a held press must not release a click into the page.
-                if (isDown(event)) { finishingPress = false; pressed = false; return; }
-                if (!activationEvents.includes(event.type)) return;
+                if (isDown(event) && !(finishingTouch && (touchActive || event.type === "mousedown"))) {
+                    finishingPress = false; finishingTouch = false; pressed = false; return;
+                }
+                if (!activationEvents.includes(event.type) && event.type !== "touchmove") return;
                 cancel(event);
-                if (["click", "auxclick", "pointercancel"].includes(event.type)) finishingPress = false;
+                if (["touchend", "touchcancel"].includes(event.type)) touchActive = event.touches.length > 0;
+                if (["click", "auxclick"].includes(event.type) ||
+                    (["pointercancel", "touchcancel"].includes(event.type) && !touchActive)) {
+                    finishingPress = false; finishingTouch = false;
+                }
                 return;
             }
             if (event.type === "keydown") { onKeyDown(event); return; }
+            if (event.type === "touchstart") touchActive = true;
+            if (["touchend", "touchcancel"].includes(event.type)) touchActive = event.touches.length > 0;
             if (event.composedPath().includes(session.pickerPanel)) {
                 if (isDown(event)) pressed = true;
-                if (["pointerup", "mouseup", "pointercancel", "click", "auxclick"].includes(event.type)) pressed = false;
+                if (isRelease(event)) pressed = false;
                 lastPoint = null;
                 hover(null);
+                return;
+            }
+            if (event.type.startsWith("touch")) {
+                // Stop page touch/gesture handlers at early capture, but retain
+                // native panning and tap-click generation. The click guard below
+                // cancels activation and delegates the tap to picker selection.
+                event.stopImmediatePropagation();
+                if (isDown(event)) pressed = true;
+                if (isRelease(event)) pressed = false;
                 return;
             }
             if (event.type === "wheel") {
@@ -106,7 +126,7 @@
             }
             cancel(event);
             if (isDown(event)) pressed = true;
-            if (["pointerup", "mouseup", "pointercancel", "click", "auxclick"].includes(event.type)) pressed = false;
+            if (isRelease(event)) pressed = false;
             if (event.type === "click" && event.button === 0 && event.detail < 2) {
                 const element = targetFor(event);
                 if (element) onSelect(element);
@@ -148,7 +168,7 @@
         };
 
         const start = ({ pickerRoot, shadowRoot, pickerPanel }) => {
-            pressed = false; finishingPress = false; lastPoint = null; lastHover = null;
+            pressed = false; finishingPress = false; touchActive = false; finishingTouch = false; lastPoint = null; lastHover = null;
             // A top-layer popover outside a modal dialog is still inert. Mount
             // inside the active modal (or fullscreen element) before showing it.
             const mount = activeModal() || document.fullscreenElement || document.body;
@@ -178,11 +198,12 @@
                 catch { pickerRoot.removeAttribute("popover"); }
             }
             // UI target handlers still run; their bubbling events stay inside our root.
-            for (const type of activationEvents) pickerRoot.addEventListener(type, event => event.stopPropagation());
+            for (const type of [...activationEvents, "touchmove"]) pickerRoot.addEventListener(type, event => event.stopPropagation());
         };
 
         const stop = () => {
-            finishingPress = pressed;
+            finishingPress = pressed || touchActive;
+            finishingTouch = touchActive;
             session = null; lastPoint = null; lastHover = null; pressed = false;
         };
         const refreshHover = () => {

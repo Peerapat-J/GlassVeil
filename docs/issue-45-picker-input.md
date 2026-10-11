@@ -132,3 +132,20 @@ Manual extension checklist (API failures currently simulated in tests):
 - [ ] Restore style application and retry. Verify the ad hides, the picker closes, and the stored rule ID/count is unchanged.
 - [ ] Repeat the failure and choose Close or Escape. Reload the page; the saved rule must apply, consistent with the notice.
 - [ ] Fail persistence instead: verify **Could not save** / **Retry save**, then Cancel and reload. No new rule should be stored. Remove disposable localhost rules afterward.
+
+
+## Touch isolation
+
+Early capture now isolates `touchstart`, `touchmove`, `touchend` and `touchcancel` from page handlers. Panel touch controls still receive their own events, with bubbling contained at the picker root. Active-session touch guards stop propagation without cancelling native touch defaults; this preserves panning and the browser-generated tap click, which the existing click guard cancels and uses for selection. The [Touch Events specification](https://www.w3.org/TR/touch-events/#the-touchstart-event) describes why cancelling touchstart would also suppress scrolling and compatibility mouse events.
+
+A touch still held when the picker closes remains guarded through release/cancel and its compatibility mouse tail. Touch contact is tracked independently of pointer cancellation so a native pan cannot prematurely release page handlers.
+
+Automated tests dispatch synthetic TouchEvents to page/shield/panel, cover early window/document/target listeners, re-entry, tap-click selection, exit during held touch and interleaved pointer cancellation. Physical touch input and native compatibility-click/pan behavior remain unverified here; the browser fixture counters now include touch events in the parent page and both iframe fixtures.
+
+Manual checklist on a touch-capable browser/device with the extension installed:
+
+- [ ] Open the fixture; select ordinary link/button targets and each iframe by tapping. Each tap should select once, keep page/iframe counters at zero, and avoid opening a link/tab.
+- [ ] Pan vertically while picking. Viewport scrolling should work, page touch/gesture handlers must stay quiet, and a scroll must not select an element.
+- [ ] Tap Preview Hide, Undo and other panel controls; verify they work without activating page handlers. Repeat with Cancel and Block.
+- [ ] Close the picker via Escape while a finger remains down; move, lift and allow any compatibility mouse sequence to finish. No page handler should run. Start a fresh touch; ordinary interaction must resume.
+- [ ] Repeat after re-entering the picker and with the modal/maximum-overlay scenarios. Delete disposable saved fixture rules afterward.

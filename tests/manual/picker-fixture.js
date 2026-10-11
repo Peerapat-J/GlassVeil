@@ -31,7 +31,7 @@
     }
     const pageInteraction = event => !event.composedPath().some(node =>
         node.id === 'glassveil-panel' || node.classList?.contains('fixture-controls'));
-    for (const type of ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click', 'auxclick', 'dblclick', 'contextmenu']) {
+    for (const type of ['touchstart', 'touchmove', 'touchend', 'touchcancel', 'pointerdown', 'mousedown', 'pointerup', 'mouseup', 'click', 'auxclick', 'dblclick', 'contextmenu']) {
         window.addEventListener(type, event => { if (pageInteraction(event)) { counts.window++; render(); } }, true);
         document.addEventListener(type, event => { if (pageInteraction(event)) { counts.document++; render(); } }, true);
         document.querySelectorAll('.target').forEach(element => element.addEventListener(type, () => { counts.target++; render(); }));

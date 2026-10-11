@@ -52,6 +52,86 @@ test('picker input: intercepts complete activation sequences before window/docum
     assert.equal(seen.length, 6);
 });
 
+function touch(f, target, type, options = {}) {
+    const event = new f.window.TouchEvent(type, { bubbles: true, composed: true, cancelable: true, ...options });
+    target.dispatchEvent(event);
+    return event;
+}
+
+test('picker input: touch sequences never reach page handlers and taps select through the guarded click', t => {
+    const f = setup(t), seen = [], ad = f.document.querySelector('#ad');
+    const types = ['touchstart', 'touchmove', 'touchend', 'touchcancel'];
+    for (const type of types) for (const target of [f.window, f.document, ad]) {
+        target.addEventListener(type, () => seen.push(type), true);
+        target.addEventListener(type, () => seen.push(type));
+    }
+    f.picker.start();
+    for (const target of [ad, f.shield()]) {
+        for (const type of types) touch(f, target, type);
+    }
+    assert.deepEqual(seen, []);
+    // Native pan is preserved. The browser's tap click is still cancelled and
+    // delegated to picker selection, without manually replaying input to the page.
+    assert.equal(touch(f, f.shield(), 'touchstart').defaultPrevented, false);
+    touch(f, f.shield(), 'touchend');
+    assert.equal(f.fire(f.shield(), 'click').defaultPrevented, true);
+    assert.equal(f.shadow().querySelector('#selection-count').textContent, '1 selected');
+    f.picker.stop();
+    touch(f, ad, 'touchstart'); touch(f, ad, 'touchend');
+    assert.equal(seen.length, 12);
+    f.picker.start(); touch(f, f.shield(), 'touchstart'); touch(f, f.shield(), 'touchend');
+    assert.equal(seen.length, 12);
+});
+
+test('picker input: panel touch controls receive input without exposing it to page handlers', t => {
+    const f = setup(t), seen = [], local = [];
+    f.document.addEventListener('touchstart', () => seen.push('start'));
+    f.document.addEventListener('touchmove', () => seen.push('move'));
+    f.document.addEventListener('touchend', () => seen.push('end'));
+    f.picker.start(); f.fire(f.shield(), 'click');
+    const preview = f.shadow().querySelector('#preview-toggle');
+    for (const type of ['touchstart', 'touchmove', 'touchend']) {
+        preview.addEventListener(type, () => local.push(type));
+        assert.equal(touch(f, preview, type).defaultPrevented, false);
+    }
+    preview.click();
+    assert.equal(preview.getAttribute('aria-checked'), 'true');
+    assert.deepEqual(local, ['touchstart', 'touchmove', 'touchend']);
+    assert.deepEqual(seen, []);
+});
+
+for (const end of ['touchend', 'touchcancel']) test(`picker input: exit during held touch guards the remainder (${end})`, t => {
+    const f = setup(t), seen = [], ad = f.document.querySelector('#ad');
+    for (const type of ['touchstart', 'touchmove', 'touchend', 'touchcancel', 'click']) {
+        f.window.addEventListener(type, () => seen.push(type), true);
+    }
+    f.picker.start(); touch(f, f.shield(), 'touchstart');
+    f.picker.stop();
+    assert.equal(touch(f, ad, 'touchmove').defaultPrevented, true);
+    assert.equal(touch(f, ad, end).defaultPrevented, true);
+    if (end === 'touchend') assert.equal(f.fire(ad, 'click').defaultPrevented, true);
+    assert.deepEqual(seen, []);
+    assert.equal(touch(f, ad, 'touchstart').defaultPrevented, false);
+    touch(f, ad, 'touchend');
+    assert.deepEqual(seen, ['touchstart', 'touchend']);
+});
+
+test('picker input: pointer cancellation does not release a held touch or its compatibility mouse tail', t => {
+    const f = setup(t), seen = [], ad = f.document.querySelector('#ad');
+    for (const type of ['touchmove', 'touchend', 'mousedown', 'mouseup', 'click']) {
+        f.window.addEventListener(type, () => seen.push(type), true);
+    }
+    f.picker.start();
+    f.fire(f.shield(), 'pointerdown'); touch(f, f.shield(), 'touchstart');
+    f.fire(f.shield(), 'pointercancel'); // Native pan can cancel pointer events before the finger lifts.
+    f.picker.stop();
+    touch(f, ad, 'touchmove'); touch(f, ad, 'touchend');
+    f.fire(ad, 'mousedown'); f.fire(ad, 'mouseup'); f.fire(ad, 'click');
+    assert.deepEqual(seen, []);
+    f.fire(ad, 'pointerdown'); f.fire(ad, 'mousedown'); f.fire(ad, 'mouseup'); f.fire(ad, 'click');
+    assert.deepEqual(seen, ['mousedown', 'mouseup', 'click']);
+});
+
 test('picker input: shield hit-tests hover/click and selects iframe containers without entering frames', t => {
     const f = setup(t);
     f.picker.start();
